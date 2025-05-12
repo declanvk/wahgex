@@ -536,11 +536,11 @@ pub mod tests {
 
         // dense entries
         assert_eq!(
-            &state_memory.data(&store)[(0 * STATE_ID_LAYOUT.size())..(1 * STATE_ID_LAYOUT.size())],
+            &state_memory.data(&store)[0..STATE_ID_LAYOUT.size()],
             &[0, 1, 0, 0]
         );
         assert_eq!(
-            &state_memory.data(&store)[(1 * STATE_ID_LAYOUT.size())..(2 * STATE_ID_LAYOUT.size())],
+            &state_memory.data(&store)[STATE_ID_LAYOUT.size()..(2 * STATE_ID_LAYOUT.size())],
             &[255, 1, 0, 0]
         );
 

@@ -63,7 +63,7 @@ pub fn suite() -> anyhow::Result<regex_test::RegexTests> {
 }
 
 /// Configure a regex_automata::Input with the given test configuration.
-fn create_input<'h>(test: &'h regex_test::RegexTest) -> regex_automata::Input<'h> {
+fn create_input(test: &regex_test::RegexTest) -> regex_automata::Input<'_> {
     use regex_automata::Anchored;
 
     let bounds = test.bounds();
@@ -85,7 +85,7 @@ fn compiler(
             return Ok(CompiledRegex::skip());
         }
 
-        let re = match builder.build_many(&regexes) {
+        let re = match builder.build_many(regexes) {
             Ok(re) => re,
             Err(err) if err.is_unsupported() => {
                 return Ok(CompiledRegex::skip());

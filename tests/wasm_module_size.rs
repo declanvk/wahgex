@@ -90,7 +90,7 @@ fn compile(
         return Ok(CompileOutput::Skip);
     }
 
-    let re = match builder.build_many(&regexes) {
+    let re = match builder.build_many(regexes) {
         Ok(re) => re,
         Err(err) if err.is_unsupported() => {
             return Ok(CompileOutput::Skip);
