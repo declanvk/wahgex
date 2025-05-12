@@ -1,0 +1,76 @@
+//! This module contains type and functions related to the entire runtime state
+//! of the engine.
+
+use std::alloc::{Layout, LayoutError};
+
+use super::{
+    epsilon_closure::EpsilonClosureFunctions,
+    pattern::{PatternFunctions, PatternLayout},
+    sparse_set::{SparseSetFunctions, SparseSetLayout},
+    transition::{TransitionFunctions, TransitionLayout},
+    BuildError, CompileContext,
+};
+
+/// This type will be used to plan the WASM memory layout and precompute the
+/// ptr/offsets of various data structures.
+pub struct StateLayout {
+    /// TODO: Write docs for this item
+    pub overall: Layout,
+    transition: TransitionLayout,
+    pub first_sparse_set: SparseSetLayout,
+    pub second_sparse_set: SparseSetLayout,
+    pattern: PatternLayout,
+}
+
+impl StateLayout {
+    /// TODO: Write docs for this item
+    pub fn new(ctx: &mut CompileContext) -> Result<Self, LayoutError> {
+        // Using a ZST to start the layout so that we have minimal alignment
+        // requirements
+        let overall = Layout::new::<()>();
+        let (overall, transition) = TransitionLayout::new(ctx, overall)?;
+        let (overall, first_sparse_set) = SparseSetLayout::new(ctx, overall)?;
+        let (overall, second_sparse_set) = SparseSetLayout::new(ctx, overall)?;
+        let (overall, pattern) = PatternLayout::new(ctx, overall)?;
+
+        let overall = overall.pad_to_align();
+
+        Ok(Self {
+            overall,
+            transition,
+            first_sparse_set,
+            second_sparse_set,
+            pattern,
+        })
+    }
+}
+
+/// This struct contains all the functions for manipulating the built-in
+/// data structures.
+#[derive(Debug)]
+pub struct StateFunctions {
+    #[expect(dead_code)]
+    sparse_set: SparseSetFunctions,
+    pub epsilon_closure: EpsilonClosureFunctions,
+    pub transition: TransitionFunctions,
+    pub pattern: PatternFunctions,
+}
+
+impl StateFunctions {
+    /// TODO: Write docs for this item
+    pub fn new(ctx: &mut CompileContext, layout: &StateLayout) -> Result<Self, BuildError> {
+        // It shouldn't matter if we pass the first or the second sparse set, since they
+        // have the same
+        let sparse_set = SparseSetFunctions::new(ctx, &layout.first_sparse_set);
+        let epsilon_closure = EpsilonClosureFunctions::new(ctx, sparse_set.insert)?;
+        let transition = TransitionFunctions::new(ctx, &epsilon_closure, &layout.transition);
+        let pattern = PatternFunctions::new(ctx, &layout.pattern);
+
+        Ok(Self {
+            sparse_set,
+            epsilon_closure,
+            transition,
+            pattern,
+        })
+    }
+}

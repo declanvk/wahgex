@@ -1,0 +1,9 @@
+[package]
+name = "wahgex-cli"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+wahgex = { path = "../.", version = "0.1" }
+wasmparser = { workspace = true }
+wasmprinter = { workspace = true }
