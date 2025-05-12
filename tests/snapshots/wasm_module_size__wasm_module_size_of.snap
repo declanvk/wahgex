@@ -1,659 +1,700 @@
 ---
 source: tests/wasm_module_size.rs
-expression: "lines.join(\"\\n\")"
+expression: formatted
 ---
-anchored/greedy                                   :5683
-anchored/greedy-earliest                          :5683
-anchored/no-match-at-start                        :7804
-anchored/no-match-at-start-bounds                 :7804
-anchored/no-match-at-start-reverse-inner          :8227
-anchored/no-match-at-start-reverse-inner-bounds   :8227
-anchored/nongreedy                                :5683
-anchored/nongreedy-all                            :5683
-bytes/case-class-ascii         :4598
-bytes/case-class-simple-ascii  :4598
-bytes/case-class-unicode       :5869
-bytes/case-one-ascii           :4385
-bytes/case-one-unicode         :4385
-bytes/dotstar-prefix-ascii     :4173
-bytes/dotstar-prefix-unicode   :4173
-bytes/mixed-dot                :9289
-bytes/negate-ascii             :4385
-bytes/negate-unicode           :7381
-bytes/null-bytes               :5207
-bytes/perl-decimal-ascii       :4383
-bytes/perl-decimal-unicode     :17490
-bytes/perl-whitespace-ascii    :4598
-bytes/perl-whitespace-unicode  :8216
-bytes/perl-word-ascii          :4611
-bytes/perl-word-unicode        :203793
-crazy/email-big               :11935
-crazy/empty1                  :3918
-crazy/empty10                 :4590
-crazy/empty11                 :4590
-crazy/empty2                  :3918
-crazy/empty3                  :3918
-crazy/empty4                  :4141
-crazy/empty5                  :3918
-crazy/empty6                  :4141
-crazy/empty7                  :3918
-crazy/empty8                  :4590
-crazy/empty9                  :4590
-crazy/float1                  :6645
-crazy/float2                  :6645
-crazy/float3                  :6645
-crazy/float4                  :6645
-crazy/greedy-many-many        :8539
-crazy/greedy-many-optional    :8539
-crazy/greedy-one-many-many    :8295
-crazy/greedy-one-many-optional:8295
-crazy/greedy-range-many       :12208
-crazy/greedy-range-min-many   :8295
-crazy/lazy-many-many          :8539
-crazy/lazy-many-optional      :8539
-crazy/lazy-one-many-many      :8295
-crazy/lazy-one-many-optional  :8295
-crazy/lazy-range-many         :12208
-crazy/lazy-range-min-many     :8295
-crazy/neg-class-ascii         :7388
-crazy/neg-class-comma         :7381
-crazy/neg-class-comma-space   :7394
-crazy/neg-class-letter        :7388
-crazy/neg-class-letter-comma  :7388
-crazy/neg-class-letter-space  :7394
-crazy/neg-class-space         :7388
-crazy/neg-class-space-comma   :7394
-crazy/nothing-empty           :2590
-crazy/nothing-something       :2590
-crlf/dot-no-crlf                    :7388
-earliest/is-ungreedy          :4385
-earliest/no-greedy-100        :4385
-earliest/no-greedy-200        :5225
-earliest/no-leftmost-first-100:5225
-earliest/no-leftmost-first-200:5225
-empty/100:4590
-empty/110:4590
-empty/120:4590
-empty/130:4590
-empty/200:4141
-empty/210:4141
-empty/220:4590
-empty/230:4590
-empty/240:4590
-empty/300:4590
-empty/310:4590
-empty/320:4141
-empty/330:4590
-empty/400:4173
-empty/500:3918
-empty/510:3918
-empty/520:3918
-empty/600:5096
-empty/610:4844
-expensive/backtrack-blow-visited-capacity         :9481364
-flags/1 :5650
-flags/10:4385
-flags/2 :5225
-flags/3 :5225
-flags/4 :8011
-flags/5 :12087
-flags/6 :12087
-flags/7 :12301
-flags/8 :4385
-flags/9 :4385
-fowler/basic/basic10 :4173
-fowler/basic/basic100:5635
-fowler/basic/basic101:5635
-fowler/basic/basic102:5635
-fowler/basic/basic103:5635
-fowler/basic/basic104:5635
-fowler/basic/basic105:5215
-fowler/basic/basic111:8227
-fowler/basic/basic112:8227
-fowler/basic/basic113:8436
-fowler/basic/basic114:5013
-fowler/basic/basic115:5013
-fowler/basic/basic116:4592
-fowler/basic/basic117:4805
-fowler/basic/basic118:4805
-fowler/basic/basic119:4592
-fowler/basic/basic12 :4173
-fowler/basic/basic120:5013
-fowler/basic/basic121:8227
-fowler/basic/basic122:8234
-fowler/basic/basic123:8234
-fowler/basic/basic124:5225
-fowler/basic/basic125:5225
-fowler/basic/basic126:5011
-fowler/basic/basic127:5213
-fowler/basic/basic128:5213
-fowler/basic/basic129:5023
-fowler/basic/basic130:5817
-fowler/basic/basic131:5417
-fowler/basic/basic132:4590
-fowler/basic/basic133:5684
-fowler/basic/basic134:5408
-fowler/basic/basic135:6510
-fowler/basic/basic136:6035
-fowler/basic/basic137:5830
-fowler/basic/basic138:5945
-fowler/basic/basic139:7802
-fowler/basic/basic141:4590
-fowler/basic/basic142:5280
-fowler/basic/basic143:6125
-fowler/basic/basic144:4173
-fowler/basic/basic145:4998
-fowler/basic/basic146:7240
-fowler/basic/basic147:6902
-fowler/basic/basic148:4806
-fowler/basic/basic149:4806
-fowler/basic/basic150:6053
-fowler/basic/basic151:5013
-fowler/basic/basic152:5643
-fowler/basic/basic153:7165
-fowler/basic/basic154:5947
-fowler/basic/basic155:6781
-fowler/basic/basic156:6721
-fowler/basic/basic157:6699
-fowler/basic/basic158:7325
-fowler/basic/basic159:6301
-fowler/basic/basic16 :4592
-fowler/basic/basic160:7072
-fowler/basic/basic161:5248
-fowler/basic/basic166:8657
-fowler/basic/basic167:9658
-fowler/basic/basic168:12834
-fowler/basic/basic169:5433
-fowler/basic/basic17 :4592
-fowler/basic/basic170:5821
-fowler/basic/basic171:5213
-fowler/basic/basic172:19955
-fowler/basic/basic173:19955
-fowler/basic/basic174:19955
-fowler/basic/basic175:19955
-fowler/basic/basic176:19955
-fowler/basic/basic177:19955
-fowler/basic/basic178:19955
-fowler/basic/basic179:19955
-fowler/basic/basic180:19955
-fowler/basic/basic181:19955
-fowler/basic/basic182:19955
-fowler/basic/basic183:19955
-fowler/basic/basic184:19955
-fowler/basic/basic185:19955
-fowler/basic/basic186:19955
-fowler/basic/basic187:19955
-fowler/basic/basic188:19955
-fowler/basic/basic189:6091
-fowler/basic/basic19 :4590
-fowler/basic/basic197:9522
-fowler/basic/basic198:9522
-fowler/basic/basic199:9522
-fowler/basic/basic200:9082
-fowler/basic/basic201:9082
-fowler/basic/basic202:9082
-fowler/basic/basic203:9080
-fowler/basic/basic204:9080
-fowler/basic/basic205:9080
-fowler/basic/basic206:8167
-fowler/basic/basic207:8167
-fowler/basic/basic208:8167
-fowler/basic/basic218:13632
-fowler/basic/basic219:13634
-fowler/basic/basic220:5433
-fowler/basic/basic221:13626
-fowler/basic/basic222:13628
-fowler/basic/basic223:5427
-fowler/basic/basic24 :23644
-fowler/basic/basic25 :23644
-fowler/basic/basic26 :6689
-fowler/basic/basic27 :6939
-fowler/basic/basic28 :4173
-fowler/basic/basic29 :8513
-fowler/basic/basic30 :8513
-fowler/basic/basic32 :5720
-fowler/basic/basic33 :6397
-fowler/basic/basic34 :10036
-fowler/basic/basic35 :8163
-fowler/basic/basic36 :8956
-fowler/basic/basic37 :6493
-fowler/basic/basic38 :6493
-fowler/basic/basic39 :7796
-fowler/basic/basic4  :15533
-fowler/basic/basic40 :7796
-fowler/basic/basic41 :20796
-fowler/basic/basic42 :7153
-fowler/basic/basic43 :7153
-fowler/basic/basic44 :5645
-fowler/basic/basic45 :6699
-fowler/basic/basic46 :6064
-fowler/basic/basic47 :9197
-fowler/basic/basic48 :33355
-fowler/basic/basic49 :4806
-fowler/basic/basic5  :6275
-fowler/basic/basic50 :4806
-fowler/basic/basic51 :7463
-fowler/basic/basic52 :7381
-fowler/basic/basic53 :4803
-fowler/basic/basic54 :4803
-fowler/basic/basic55 :9004
-fowler/basic/basic56 :9004
-fowler/basic/basic57 :4173
-fowler/basic/basic58 :4385
-fowler/basic/basic59 :4385
-fowler/basic/basic6  :4171
-fowler/basic/basic65 :4171
-fowler/basic/basic66 :4171
-fowler/basic/basic67 :7381
-fowler/basic/basic68 :4590
-fowler/basic/basic69 :6227
-fowler/basic/basic7  :4592
-fowler/basic/basic70 :5013
-fowler/basic/basic78 :5023
-fowler/basic/basic80 :5544
-fowler/basic/basic81 :6806
-fowler/basic/basic82 :8604
-fowler/basic/basic83 :8604
-fowler/basic/basic84 :11581
-fowler/basic/basic86 :7802
-fowler/basic/basic87 :23477
-fowler/basic/basic89 :7706
-fowler/basic/basic9  :4173
-fowler/basic/basic94 :5013
-fowler/basic/basic95 :5013
-fowler/basic/basic96 :5013
-fowler/basic/basic97 :5215
-fowler/basic/basic98 :5635
-fowler/basic/basic99 :5635
-fowler/nullsubexpr/nullsubexpr10:5408
-fowler/nullsubexpr/nullsubexpr11:5288
-fowler/nullsubexpr/nullsubexpr12:5288
-fowler/nullsubexpr/nullsubexpr13:5288
-fowler/nullsubexpr/nullsubexpr14:5288
-fowler/nullsubexpr/nullsubexpr15:5083
-fowler/nullsubexpr/nullsubexpr16:5083
-fowler/nullsubexpr/nullsubexpr17:5083
-fowler/nullsubexpr/nullsubexpr18:5083
-fowler/nullsubexpr/nullsubexpr20:5684
-fowler/nullsubexpr/nullsubexpr21:5684
-fowler/nullsubexpr/nullsubexpr22:5684
-fowler/nullsubexpr/nullsubexpr23:5684
-fowler/nullsubexpr/nullsubexpr24:5408
-fowler/nullsubexpr/nullsubexpr25:5408
-fowler/nullsubexpr/nullsubexpr26:5408
-fowler/nullsubexpr/nullsubexpr27:5408
-fowler/nullsubexpr/nullsubexpr28:8903
-fowler/nullsubexpr/nullsubexpr29:8903
-fowler/nullsubexpr/nullsubexpr3 :5684
-fowler/nullsubexpr/nullsubexpr30:8903
-fowler/nullsubexpr/nullsubexpr31:8903
-fowler/nullsubexpr/nullsubexpr32:5684
-fowler/nullsubexpr/nullsubexpr33:5684
-fowler/nullsubexpr/nullsubexpr34:5684
-fowler/nullsubexpr/nullsubexpr35:5684
-fowler/nullsubexpr/nullsubexpr36:5684
-fowler/nullsubexpr/nullsubexpr37:5684
-fowler/nullsubexpr/nullsubexpr38:5684
-fowler/nullsubexpr/nullsubexpr39:8903
-fowler/nullsubexpr/nullsubexpr4 :5684
-fowler/nullsubexpr/nullsubexpr40:8903
-fowler/nullsubexpr/nullsubexpr41:8903
-fowler/nullsubexpr/nullsubexpr42:8903
-fowler/nullsubexpr/nullsubexpr43:8903
-fowler/nullsubexpr/nullsubexpr46:6583
-fowler/nullsubexpr/nullsubexpr5 :5684
-fowler/nullsubexpr/nullsubexpr6 :5684
-fowler/nullsubexpr/nullsubexpr64:6360
-fowler/nullsubexpr/nullsubexpr65:6360
-fowler/nullsubexpr/nullsubexpr66:6360
-fowler/nullsubexpr/nullsubexpr68:6084
-fowler/nullsubexpr/nullsubexpr69:6084
-fowler/nullsubexpr/nullsubexpr7 :5408
-fowler/nullsubexpr/nullsubexpr70:6084
-fowler/nullsubexpr/nullsubexpr72:7039
-fowler/nullsubexpr/nullsubexpr73:7039
-fowler/nullsubexpr/nullsubexpr74:7039
-fowler/nullsubexpr/nullsubexpr8 :5408
-fowler/nullsubexpr/nullsubexpr9 :5408
-fowler/repetition/repetition-expensive100:47238
-fowler/repetition/repetition-expensive102:46604
-fowler/repetition/repetition-expensive104:45995
-fowler/repetition/repetition-expensive106:45405
-fowler/repetition/repetition-expensive108:44855
-fowler/repetition/repetition-expensive110:44328
-fowler/repetition/repetition-expensive112:43818
-fowler/repetition/repetition-expensive114:43317
-fowler/repetition/repetition-expensive115:42838
-fowler/repetition/repetition-expensive127:8072
-fowler/repetition/repetition-expensive129:7786
-fowler/repetition/repetition-expensive130:10320
-fowler/repetition/repetition-expensive131:12855
-fowler/repetition/repetition-expensive132:15397
-fowler/repetition/repetition-expensive134:34899
-fowler/repetition/repetition-expensive136:34317
-fowler/repetition/repetition-expensive137:33881
-fowler/repetition/repetition-expensive138:33447
-fowler/repetition/repetition-expensive139:33014
-fowler/repetition/repetition-expensive141:8072
-fowler/repetition/repetition-expensive143:7786
-fowler/repetition/repetition-expensive149:8072
-fowler/repetition/repetition-expensive151:7786
-fowler/repetition/repetition-expensive153:10320
-fowler/repetition/repetition-expensive155:12855
-fowler/repetition/repetition-expensive156:15397
-fowler/repetition/repetition-expensive158:34899
-fowler/repetition/repetition-expensive160:34317
-fowler/repetition/repetition-expensive162:33881
-fowler/repetition/repetition-expensive164:33447
-fowler/repetition/repetition-expensive165:33014
-fowler/repetition/repetition-expensive167:8072
-fowler/repetition/repetition-expensive169:7786
-fowler/repetition/repetition-expensive90 :9414
-fowler/repetition/repetition-expensive91 :9170
-fowler/repetition/repetition-expensive92 :13601
-fowler/repetition/repetition-expensive93 :18161
-fowler/repetition/repetition-expensive94 :22837
-fowler/repetition/repetition-expensive95 :27633
-fowler/repetition/repetition-expensive96 :32715
-fowler/repetition/repetition-expensive97 :37991
-fowler/repetition/repetition-expensive98 :43394
-fowler/repetition/repetition10           :16271
-fowler/repetition/repetition11           :28852
-fowler/repetition/repetition12           :41865
-fowler/repetition/repetition14           :16271
-fowler/repetition/repetition15           :28852
-fowler/repetition/repetition16           :41865
-fowler/repetition/repetition18           :16953
-fowler/repetition/repetition20           :16271
-fowler/repetition/repetition21           :28852
-fowler/repetition/repetition22           :41865
-fowler/repetition/repetition24           :16271
-fowler/repetition/repetition25           :28852
-fowler/repetition/repetition26           :41865
-fowler/repetition/repetition28           :16953
-fowler/repetition/repetition30           :16271
-fowler/repetition/repetition31           :28852
-fowler/repetition/repetition32           :41865
-fowler/repetition/repetition34           :16271
-fowler/repetition/repetition35           :28852
-fowler/repetition/repetition36           :41865
-fowler/repetition/repetition38           :16953
-fowler/repetition/repetition40           :16271
-fowler/repetition/repetition41           :28852
-fowler/repetition/repetition42           :41865
-fowler/repetition/repetition44           :16271
-fowler/repetition/repetition46           :28852
-fowler/repetition/repetition47           :41865
-fowler/repetition/repetition50           :16953
-fowler/repetition/repetition52           :16271
-fowler/repetition/repetition53           :28852
-fowler/repetition/repetition54           :41865
-fowler/repetition/repetition56           :16271
-fowler/repetition/repetition57           :28852
-fowler/repetition/repetition59           :41865
-fowler/repetition/repetition61           :16953
-fowler/repetition/repetition63           :16271
-fowler/repetition/repetition64           :28852
-fowler/repetition/repetition65           :41865
-fowler/repetition/repetition67           :16271
-fowler/repetition/repetition68           :28852
-fowler/repetition/repetition70           :41865
-fowler/repetition/repetition73           :16953
-fowler/repetition/repetition75           :16271
-fowler/repetition/repetition76           :28852
-fowler/repetition/repetition77           :41865
-fowler/repetition/repetition79           :16271
-fowler/repetition/repetition80           :28852
-fowler/repetition/repetition81           :41865
-fowler/repetition/repetition83           :16953
-iter/1                           :4173
-iter/2                           :4173
-iter/anchored1                   :4173
-iter/anchored2                   :4173
-iter/anchored3                   :4173
-iter/empty1                      :3918
-iter/empty10                     :4590
-iter/empty11                     :4590
-iter/empty2                      :3918
-iter/empty3                      :3918
-iter/empty4                      :4141
-iter/empty5                      :3918
-iter/empty6                      :4141
-iter/empty7                      :3918
-iter/empty8                      :4590
-iter/empty9                      :4590
-iter/nonempty-followedby-empty   :9348
-iter/nonempty-followedby-oneempty:9348
-iter/nonempty-followedby-onemixed:9348
-iter/nonempty-followedby-twomixed:9348
-leftmost-all/alt   :6489
-leftmost-all/dotall:7375
-leftmost-all/multi :8524
-line-terminator/dot-changes-with-line-terminator:7375
-misc/ascii-literal             :4173
-misc/ascii-literal-anchored    :4173
-misc/ascii-literal-anchored-not:4173
-misc/ascii-literal-not         :4173
-misc/one-literal-edge          :5013
-misc/suffix-100                :9322
-misc/suffix-200                :9536
-misc/suffix-300                :9536
-misc/suffix-400                :9536
-misc/suffix-500                :9959
-misc/suffix-600                :9959
-no-unicode/anchored-iter-empty-utf8         :3918
-no-unicode/case1                            :4385
-no-unicode/case2                            :4598
-no-unicode/case3                            :5869
-no-unicode/case4                            :4598
-no-unicode/decimal-ascii                    :4383
-no-unicode/decimal-unicode                  :17490
-no-unicode/dotstar-prefix1                  :4173
-no-unicode/dotstar-prefix2                  :4173
-no-unicode/invalid-utf8-literal1            :4173
-no-unicode/iter1-bytes                      :3773
-no-unicode/iter1-utf8                       :3918
-no-unicode/iter2-bytes                      :3773
-no-unicode/mixed                            :8441
-no-unicode/negate1                          :7381
-no-unicode/negate2                          :4385
-no-unicode/null-bytes1                      :4793
-no-unicode/space-ascii                      :4598
-no-unicode/space-unicode                    :8216
-no-unicode/unanchored-invalid-utf8-match-100:4173
-no-unicode/word-ascii                       :4611
-no-unicode/word-unicode                     :203793
-overlapping/alt-all-100                            :5225
-overlapping/alt-leftmost-first-100                 :5225
-overlapping/empty-000                              :3918
-overlapping/empty-alt-000                          :4590
-overlapping/empty-alt-010                          :4590
-overlapping/greedy-dotstar-matches-everything-100  :7802
-overlapping/iter1-bytes                            :3773
-overlapping/iter1-incomplete-utf8                  :3773
-overlapping/iter1-utf8                             :3918
-overlapping/repetition-plus-all-100                :4385
-overlapping/repetition-plus-all-110                :5225
-overlapping/repetition-plus-all-200                :5683
-overlapping/repetition-plus-leftmost-first-100     :4385
-overlapping/repetition-plus-leftmost-first-110     :5225
-overlapping/repetition-plus-leftmost-first-200     :5683
-overlapping/repetition-star-all-100                :4590
-overlapping/repetition-star-all-200                :5888
-overlapping/repetition-star-leftmost-first-100     :4590
-overlapping/repetition-star-leftmost-first-200     :5888
-overlapping/scratch                                :8947
-overlapping/ungreedy-dotstar-matches-everything-100:7802
-regression/aho-corasick-100                                        :7644
-regression/ascii-word-underscore                                   :4398
-regression/captures-repeat                                         :6227
-regression/captures-wrong-order                                    :4589
-regression/empty-flag-expr                                         :3918
-regression/empty-group-with-unicode                                :5429
-regression/flags-are-unset                                         :7156
-regression/fowler-basic154-unanchored                              :5947
-regression/impossible-branch                                       :8924
-regression/improper-reverse-suffix-optimization                    :11021
-regression/leftmost-first-prefix                                   :5675
-regression/literal-panic                                           :20263
-regression/lits-unambiguous-100                                    :6914
-regression/many-alternates                                         :5903
-regression/missed-match                                            :17006
-regression/negated-char-class-100                                  :7388
-regression/negated-char-class-200                                  :7388
-regression/negated-full-byte-range                                 :3936
-regression/reverse-inner-plus-shorter-than-expected                :76165
-regression/reverse-inner-short                                     :9011
-regression/reverse-suffix-100                                      :6263
-regression/reverse-suffix-200                                      :6263
-regression/unicode-case-lower-nocase-flag                          :49227
-regression/unsorted-binary-search-100                              :4605
-regression/unsorted-binary-search-200                              :4605
-set/basic10               :5561
-set/basic10-leftmost-first:5561
-set/basic100              :9233
-set/basic101              :9233
-set/basic102              :9233
-set/basic120              :4173
-set/basic121              :8050
-set/basic122              :9894
-set/basic130              :5985
-set/basic20               :5561
-set/basic30               :5561
-set/basic40               :5561
-set/basic50               :5561
-set/basic60               :6829
-set/basic60-leftmost-first:6829
-set/basic61               :6829
-set/basic61-leftmost-first:6829
-set/basic70               :10469
-set/basic71               :10469
-set/caps-110              :10656
-set/caps-120              :10656
-set/caps-121              :10656
-set/empty10               :5315
-set/empty10-leftmost-first:5315
-set/empty11               :5315
-set/empty11-leftmost-first:5315
-set/empty20               :5315
-set/empty20-leftmost-first:5315
-set/empty21               :5315
-set/empty21-leftmost-first:5315
-set/empty22               :5315
-set/empty23               :5315
-set/empty30               :5315
-set/empty30-leftmost-first:5315
-set/empty31               :5315
-set/empty31-leftmost-first:5315
-set/empty40               :5561
-set/empty40-leftmost-first:5561
-set/nomatch10             :5561
-set/nomatch30             :2590
-unicode/class-emoji1         :34337
-unicode/class-emoji2         :34337
-unicode/class-emoji3         :28823
-unicode/class-emoji4         :28823
-unicode/class-gcb1           :12915
-unicode/class-gcb2           :5433
-unicode/class-gcb3           :5433
-unicode/class-gcb4           :5433
-unicode/class-gcb5           :13114
-unicode/class-gcb6           :5013
-unicode/class-gencat1        :46616
-unicode/class-gencat10       :18861
-unicode/class-gencat11       :6742
-unicode/class-gencat12       :186370
-unicode/class-gencat13       :13098
-unicode/class-gencat14       :5013
-unicode/class-gencat15       :56036
-unicode/class-gencat16       :103335
-unicode/class-gencat17       :32377
-unicode/class-gencat18       :35849
-unicode/class-gencat19       :16609
-unicode/class-gencat2        :17512
-unicode/class-gencat20       :105841
-unicode/class-gencat21       :52212
-unicode/class-gencat22       :18165
-unicode/class-gencat23       :191558
-unicode/class-gencat24       :155186
-unicode/class-gencat25       :40697
-unicode/class-gencat26       :66346
-unicode/class-gencat27       :71073
-unicode/class-gencat28       :5013
-unicode/class-gencat29       :7982
-unicode/class-gencat3        :7558
-unicode/class-gencat30       :71587
-unicode/class-gencat31       :7783
-unicode/class-gencat32       :7776
-unicode/class-gencat33       :54505
-unicode/class-gencat34       :84507
-unicode/class-gencat35       :6942
-unicode/class-gencat36       :188635
-unicode/class-gencat37       :49191
-unicode/class-gencat4        :4812
-unicode/class-gencat5        :16964
-unicode/class-gencat6        :14614
-unicode/class-gencat7        :17276
-unicode/class-gencat8        :7557
-unicode/class-gencat9        :6735
-unicode/class-sentence-break1:57836
-unicode/class-sentence-break2:57836
-unicode/class-sentence-break3:19436
-unicode/class-sentence-break4:19436
-unicode/class-sentence-break5:11873
-unicode/class-word-break1    :6943
-unicode/class-word-break2    :6943
-unicode/class-word-break3    :8197
-unicode/class-word-break4    :7345
-unicode/class-word-break5    :21335
-unicode/class1               :5857
-unicode/class10              :56261
-unicode/class2               :52212
-unicode/class3               :52437
-unicode/class4               :63222
-unicode/class5               :63222
-unicode/class6               :52437
-unicode/class7               :49416
-unicode/class8               :51583
-unicode/class9               :186596
-unicode/literal1             :5013
-unicode/literal2             :5225
-unicode/literal3             :5225
-unicode/literal4             :4805
-unicode/perl1                :203793
-unicode/perl2                :203793
-unicode/perl3                :199014
-unicode/perl4                :17490
-unicode/perl5                :17490
-unicode/perl6                :22228
-unicode/perl7                :8216
-unicode/perl8                :8216
-unicode/perl9                :11900
-utf8/empty-utf8no                                 :3773
-utf8/empty-utf8no-anchored                        :3773
-utf8/empty-utf8no-anchored-bounds                 :3773
-utf8/empty-utf8no-anchored-bounds-overlapping     :3773
-utf8/empty-utf8no-anchored-endbound               :3773
-utf8/empty-utf8no-anchored-endbound-overlapping   :3773
-utf8/empty-utf8no-anchored-overlapping            :3773
-utf8/empty-utf8no-anchored-startbound             :3773
-utf8/empty-utf8no-anchored-startbound-overlapping :3773
-utf8/empty-utf8no-bounds                          :3773
-utf8/empty-utf8no-bounds-overlapping              :3773
-utf8/empty-utf8no-overlapping                     :3773
-utf8/empty-utf8no-startbound                      :3773
-utf8/empty-utf8no-startbound-overlapping          :3773
-utf8/empty-utf8yes                                :3918
-utf8/empty-utf8yes-anchored                       :3918
-utf8/empty-utf8yes-anchored-bounds                :3918
-utf8/empty-utf8yes-anchored-bounds-overlapping    :3918
-utf8/empty-utf8yes-anchored-endbound              :3918
-utf8/empty-utf8yes-anchored-endbound-overlapping  :3918
-utf8/empty-utf8yes-anchored-overlapping           :3918
-utf8/empty-utf8yes-anchored-startbound            :3918
-utf8/empty-utf8yes-anchored-startbound-overlapping:3918
-utf8/empty-utf8yes-bounds                         :3918
-utf8/empty-utf8yes-bounds-overlapping             :3918
-utf8/empty-utf8yes-overlapping                    :3918
-utf8/empty-utf8yes-startbound                     :3918
-utf8/empty-utf8yes-startbound-overlapping         :3918
+[anchored]
+greedy                                 = 5683
+greedy-earliest                        = 5683
+no-match-at-start                      = 7804
+no-match-at-start-bounds               = 7804
+no-match-at-start-reverse-inner        = 8227
+no-match-at-start-reverse-inner-bounds = 8227
+nongreedy                              = 5683
+nongreedy-all                          = 5683
+
+[bytes]
+case-class-ascii        = 4598
+case-class-simple-ascii = 4598
+case-class-unicode      = 5869
+case-one-ascii          = 4385
+case-one-unicode        = 4385
+dotstar-prefix-ascii    = 4173
+dotstar-prefix-unicode  = 4173
+mixed-dot               = 9289
+negate-ascii            = 4385
+negate-unicode          = 7381
+null-bytes              = 5207
+perl-decimal-ascii      = 4383
+perl-decimal-unicode    = 17490
+perl-whitespace-ascii   = 4598
+perl-whitespace-unicode = 8216
+perl-word-ascii         = 4611
+perl-word-unicode       = 203793
+
+[crazy]
+email-big                = 11935
+empty1                   = 3918
+empty10                  = 4590
+empty11                  = 4590
+empty2                   = 3918
+empty3                   = 3918
+empty4                   = 4141
+empty5                   = 3918
+empty6                   = 4141
+empty7                   = 3918
+empty8                   = 4590
+empty9                   = 4590
+float1                   = 6645
+float2                   = 6645
+float3                   = 6645
+float4                   = 6645
+greedy-many-many         = 8539
+greedy-many-optional     = 8539
+greedy-one-many-many     = 8295
+greedy-one-many-optional = 8295
+greedy-range-many        = 12208
+greedy-range-min-many    = 8295
+lazy-many-many           = 8539
+lazy-many-optional       = 8539
+lazy-one-many-many       = 8295
+lazy-one-many-optional   = 8295
+lazy-range-many          = 12208
+lazy-range-min-many      = 8295
+neg-class-ascii          = 7388
+neg-class-comma          = 7381
+neg-class-comma-space    = 7394
+neg-class-letter         = 7388
+neg-class-letter-comma   = 7388
+neg-class-letter-space   = 7394
+neg-class-space          = 7388
+neg-class-space-comma    = 7394
+nothing-empty            = 2590
+nothing-something        = 2590
+
+[crlf]
+dot-no-crlf = 7388
+
+[earliest]
+is-ungreedy           = 4385
+no-greedy-100         = 4385
+no-greedy-200         = 5225
+no-leftmost-first-100 = 5225
+no-leftmost-first-200 = 5225
+
+[empty]
+100 = 4590
+110 = 4590
+120 = 4590
+130 = 4590
+200 = 4141
+210 = 4141
+220 = 4590
+230 = 4590
+240 = 4590
+300 = 4590
+310 = 4590
+320 = 4141
+330 = 4590
+400 = 4173
+500 = 3918
+510 = 3918
+520 = 3918
+600 = 5096
+610 = 4844
+
+[expensive]
+backtrack-blow-visited-capacity = 9481364
+
+[flags]
+1  = 5650
+10 = 4385
+2  = 5225
+3  = 5225
+4  = 8011
+5  = 12087
+6  = 12087
+7  = 12301
+8  = 4385
+9  = 4385
+
+[fowler/basic]
+basic10  = 4173
+basic100 = 5635
+basic101 = 5635
+basic102 = 5635
+basic103 = 5635
+basic104 = 5635
+basic105 = 5215
+basic111 = 8227
+basic112 = 8227
+basic113 = 8436
+basic114 = 5013
+basic115 = 5013
+basic116 = 4592
+basic117 = 4805
+basic118 = 4805
+basic119 = 4592
+basic12  = 4173
+basic120 = 5013
+basic121 = 8227
+basic122 = 8234
+basic123 = 8234
+basic124 = 5225
+basic125 = 5225
+basic126 = 5011
+basic127 = 5213
+basic128 = 5213
+basic129 = 5023
+basic130 = 5817
+basic131 = 5417
+basic132 = 4590
+basic133 = 5684
+basic134 = 5408
+basic135 = 6510
+basic136 = 6035
+basic137 = 5830
+basic138 = 5945
+basic139 = 7802
+basic141 = 4590
+basic142 = 5280
+basic143 = 6125
+basic144 = 4173
+basic145 = 4998
+basic146 = 7240
+basic147 = 6902
+basic148 = 4806
+basic149 = 4806
+basic150 = 6053
+basic151 = 5013
+basic152 = 5643
+basic153 = 7165
+basic154 = 5947
+basic155 = 6781
+basic156 = 6721
+basic157 = 6699
+basic158 = 7325
+basic159 = 6301
+basic16  = 4592
+basic160 = 7072
+basic161 = 5248
+basic166 = 8657
+basic167 = 9658
+basic168 = 12834
+basic169 = 5433
+basic17  = 4592
+basic170 = 5821
+basic171 = 5213
+basic172 = 19955
+basic173 = 19955
+basic174 = 19955
+basic175 = 19955
+basic176 = 19955
+basic177 = 19955
+basic178 = 19955
+basic179 = 19955
+basic180 = 19955
+basic181 = 19955
+basic182 = 19955
+basic183 = 19955
+basic184 = 19955
+basic185 = 19955
+basic186 = 19955
+basic187 = 19955
+basic188 = 19955
+basic189 = 6091
+basic19  = 4590
+basic197 = 9522
+basic198 = 9522
+basic199 = 9522
+basic200 = 9082
+basic201 = 9082
+basic202 = 9082
+basic203 = 9080
+basic204 = 9080
+basic205 = 9080
+basic206 = 8167
+basic207 = 8167
+basic208 = 8167
+basic218 = 13632
+basic219 = 13634
+basic220 = 5433
+basic221 = 13626
+basic222 = 13628
+basic223 = 5427
+basic24  = 23644
+basic25  = 23644
+basic26  = 6689
+basic27  = 6939
+basic28  = 4173
+basic29  = 8513
+basic30  = 8513
+basic32  = 5720
+basic33  = 6397
+basic34  = 10036
+basic35  = 8163
+basic36  = 8956
+basic37  = 6493
+basic38  = 6493
+basic39  = 7796
+basic4   = 15533
+basic40  = 7796
+basic41  = 20796
+basic42  = 7153
+basic43  = 7153
+basic44  = 5645
+basic45  = 6699
+basic46  = 6064
+basic47  = 9197
+basic48  = 33355
+basic49  = 4806
+basic5   = 6275
+basic50  = 4806
+basic51  = 7463
+basic52  = 7381
+basic53  = 4803
+basic54  = 4803
+basic55  = 9004
+basic56  = 9004
+basic57  = 4173
+basic58  = 4385
+basic59  = 4385
+basic6   = 4171
+basic65  = 4171
+basic66  = 4171
+basic67  = 7381
+basic68  = 4590
+basic69  = 6227
+basic7   = 4592
+basic70  = 5013
+basic78  = 5023
+basic80  = 5544
+basic81  = 6806
+basic82  = 8604
+basic83  = 8604
+basic84  = 11581
+basic86  = 7802
+basic87  = 23477
+basic89  = 7706
+basic9   = 4173
+basic94  = 5013
+basic95  = 5013
+basic96  = 5013
+basic97  = 5215
+basic98  = 5635
+basic99  = 5635
+
+[fowler/nullsubexpr]
+nullsubexpr10 = 5408
+nullsubexpr11 = 5288
+nullsubexpr12 = 5288
+nullsubexpr13 = 5288
+nullsubexpr14 = 5288
+nullsubexpr15 = 5083
+nullsubexpr16 = 5083
+nullsubexpr17 = 5083
+nullsubexpr18 = 5083
+nullsubexpr20 = 5684
+nullsubexpr21 = 5684
+nullsubexpr22 = 5684
+nullsubexpr23 = 5684
+nullsubexpr24 = 5408
+nullsubexpr25 = 5408
+nullsubexpr26 = 5408
+nullsubexpr27 = 5408
+nullsubexpr28 = 8903
+nullsubexpr29 = 8903
+nullsubexpr3  = 5684
+nullsubexpr30 = 8903
+nullsubexpr31 = 8903
+nullsubexpr32 = 5684
+nullsubexpr33 = 5684
+nullsubexpr34 = 5684
+nullsubexpr35 = 5684
+nullsubexpr36 = 5684
+nullsubexpr37 = 5684
+nullsubexpr38 = 5684
+nullsubexpr39 = 8903
+nullsubexpr4  = 5684
+nullsubexpr40 = 8903
+nullsubexpr41 = 8903
+nullsubexpr42 = 8903
+nullsubexpr43 = 8903
+nullsubexpr46 = 6583
+nullsubexpr5  = 5684
+nullsubexpr6  = 5684
+nullsubexpr64 = 6360
+nullsubexpr65 = 6360
+nullsubexpr66 = 6360
+nullsubexpr68 = 6084
+nullsubexpr69 = 6084
+nullsubexpr7  = 5408
+nullsubexpr70 = 6084
+nullsubexpr72 = 7039
+nullsubexpr73 = 7039
+nullsubexpr74 = 7039
+nullsubexpr8  = 5408
+nullsubexpr9  = 5408
+
+[fowler/repetition]
+repetition-expensive100 = 47238
+repetition-expensive102 = 46604
+repetition-expensive104 = 45995
+repetition-expensive106 = 45405
+repetition-expensive108 = 44855
+repetition-expensive110 = 44328
+repetition-expensive112 = 43818
+repetition-expensive114 = 43317
+repetition-expensive115 = 42838
+repetition-expensive127 = 8072
+repetition-expensive129 = 7786
+repetition-expensive130 = 10320
+repetition-expensive131 = 12855
+repetition-expensive132 = 15397
+repetition-expensive134 = 34899
+repetition-expensive136 = 34317
+repetition-expensive137 = 33881
+repetition-expensive138 = 33447
+repetition-expensive139 = 33014
+repetition-expensive141 = 8072
+repetition-expensive143 = 7786
+repetition-expensive149 = 8072
+repetition-expensive151 = 7786
+repetition-expensive153 = 10320
+repetition-expensive155 = 12855
+repetition-expensive156 = 15397
+repetition-expensive158 = 34899
+repetition-expensive160 = 34317
+repetition-expensive162 = 33881
+repetition-expensive164 = 33447
+repetition-expensive165 = 33014
+repetition-expensive167 = 8072
+repetition-expensive169 = 7786
+repetition-expensive90  = 9414
+repetition-expensive91  = 9170
+repetition-expensive92  = 13601
+repetition-expensive93  = 18161
+repetition-expensive94  = 22837
+repetition-expensive95  = 27633
+repetition-expensive96  = 32715
+repetition-expensive97  = 37991
+repetition-expensive98  = 43394
+repetition10            = 16271
+repetition11            = 28852
+repetition12            = 41865
+repetition14            = 16271
+repetition15            = 28852
+repetition16            = 41865
+repetition18            = 16953
+repetition20            = 16271
+repetition21            = 28852
+repetition22            = 41865
+repetition24            = 16271
+repetition25            = 28852
+repetition26            = 41865
+repetition28            = 16953
+repetition30            = 16271
+repetition31            = 28852
+repetition32            = 41865
+repetition34            = 16271
+repetition35            = 28852
+repetition36            = 41865
+repetition38            = 16953
+repetition40            = 16271
+repetition41            = 28852
+repetition42            = 41865
+repetition44            = 16271
+repetition46            = 28852
+repetition47            = 41865
+repetition50            = 16953
+repetition52            = 16271
+repetition53            = 28852
+repetition54            = 41865
+repetition56            = 16271
+repetition57            = 28852
+repetition59            = 41865
+repetition61            = 16953
+repetition63            = 16271
+repetition64            = 28852
+repetition65            = 41865
+repetition67            = 16271
+repetition68            = 28852
+repetition70            = 41865
+repetition73            = 16953
+repetition75            = 16271
+repetition76            = 28852
+repetition77            = 41865
+repetition79            = 16271
+repetition80            = 28852
+repetition81            = 41865
+repetition83            = 16953
+
+[iter]
+1                            = 4173
+2                            = 4173
+anchored1                    = 4173
+anchored2                    = 4173
+anchored3                    = 4173
+empty1                       = 3918
+empty10                      = 4590
+empty11                      = 4590
+empty2                       = 3918
+empty3                       = 3918
+empty4                       = 4141
+empty5                       = 3918
+empty6                       = 4141
+empty7                       = 3918
+empty8                       = 4590
+empty9                       = 4590
+nonempty-followedby-empty    = 9348
+nonempty-followedby-oneempty = 9348
+nonempty-followedby-onemixed = 9348
+nonempty-followedby-twomixed = 9348
+
+[leftmost-all]
+alt    = 6489
+dotall = 7375
+multi  = 8524
+
+[line-terminator]
+dot-changes-with-line-terminator = 7375
+
+[misc]
+ascii-literal              = 4173
+ascii-literal-anchored     = 4173
+ascii-literal-anchored-not = 4173
+ascii-literal-not          = 4173
+one-literal-edge           = 5013
+suffix-100                 = 9322
+suffix-200                 = 9536
+suffix-300                 = 9536
+suffix-400                 = 9536
+suffix-500                 = 9959
+suffix-600                 = 9959
+
+[no-unicode]
+anchored-iter-empty-utf8          = 3918
+case1                             = 4385
+case2                             = 4598
+case3                             = 5869
+case4                             = 4598
+decimal-ascii                     = 4383
+decimal-unicode                   = 17490
+dotstar-prefix1                   = 4173
+dotstar-prefix2                   = 4173
+invalid-utf8-literal1             = 4173
+iter1-bytes                       = 3773
+iter1-utf8                        = 3918
+iter2-bytes                       = 3773
+mixed                             = 8441
+negate1                           = 7381
+negate2                           = 4385
+null-bytes1                       = 4793
+space-ascii                       = 4598
+space-unicode                     = 8216
+unanchored-invalid-utf8-match-100 = 4173
+word-ascii                        = 4611
+word-unicode                      = 203793
+
+[overlapping]
+alt-all-100                             = 5225
+alt-leftmost-first-100                  = 5225
+empty-000                               = 3918
+empty-alt-000                           = 4590
+empty-alt-010                           = 4590
+greedy-dotstar-matches-everything-100   = 7802
+iter1-bytes                             = 3773
+iter1-incomplete-utf8                   = 3773
+iter1-utf8                              = 3918
+repetition-plus-all-100                 = 4385
+repetition-plus-all-110                 = 5225
+repetition-plus-all-200                 = 5683
+repetition-plus-leftmost-first-100      = 4385
+repetition-plus-leftmost-first-110      = 5225
+repetition-plus-leftmost-first-200      = 5683
+repetition-star-all-100                 = 4590
+repetition-star-all-200                 = 5888
+repetition-star-leftmost-first-100      = 4590
+repetition-star-leftmost-first-200      = 5888
+scratch                                 = 8947
+ungreedy-dotstar-matches-everything-100 = 7802
+
+[regression]
+aho-corasick-100                         = 7644
+ascii-word-underscore                    = 4398
+captures-repeat                          = 6227
+captures-wrong-order                     = 4589
+empty-flag-expr                          = 3918
+empty-group-with-unicode                 = 5429
+flags-are-unset                          = 7156
+fowler-basic154-unanchored               = 5947
+impossible-branch                        = 8924
+improper-reverse-suffix-optimization     = 11021
+leftmost-first-prefix                    = 5675
+literal-panic                            = 20263
+lits-unambiguous-100                     = 6914
+many-alternates                          = 5903
+missed-match                             = 17006
+negated-char-class-100                   = 7388
+negated-char-class-200                   = 7388
+negated-full-byte-range                  = 3936
+reverse-inner-plus-shorter-than-expected = 76165
+reverse-inner-short                      = 9011
+reverse-suffix-100                       = 6263
+reverse-suffix-200                       = 6263
+unicode-case-lower-nocase-flag           = 49227
+unsorted-binary-search-100               = 4605
+unsorted-binary-search-200               = 4605
+
+[set]
+basic10                = 5561
+basic10-leftmost-first = 5561
+basic100               = 9233
+basic101               = 9233
+basic102               = 9233
+basic120               = 4173
+basic121               = 8050
+basic122               = 9894
+basic130               = 5985
+basic20                = 5561
+basic30                = 5561
+basic40                = 5561
+basic50                = 5561
+basic60                = 6829
+basic60-leftmost-first = 6829
+basic61                = 6829
+basic61-leftmost-first = 6829
+basic70                = 10469
+basic71                = 10469
+caps-110               = 10656
+caps-120               = 10656
+caps-121               = 10656
+empty10                = 5315
+empty10-leftmost-first = 5315
+empty11                = 5315
+empty11-leftmost-first = 5315
+empty20                = 5315
+empty20-leftmost-first = 5315
+empty21                = 5315
+empty21-leftmost-first = 5315
+empty22                = 5315
+empty23                = 5315
+empty30                = 5315
+empty30-leftmost-first = 5315
+empty31                = 5315
+empty31-leftmost-first = 5315
+empty40                = 5561
+empty40-leftmost-first = 5561
+nomatch10              = 5561
+nomatch30              = 2590
+
+[unicode]
+class-emoji1          = 34337
+class-emoji2          = 34337
+class-emoji3          = 28823
+class-emoji4          = 28823
+class-gcb1            = 12915
+class-gcb2            = 5433
+class-gcb3            = 5433
+class-gcb4            = 5433
+class-gcb5            = 13114
+class-gcb6            = 5013
+class-gencat1         = 46616
+class-gencat10        = 18861
+class-gencat11        = 6742
+class-gencat12        = 186370
+class-gencat13        = 13098
+class-gencat14        = 5013
+class-gencat15        = 56036
+class-gencat16        = 103335
+class-gencat17        = 32377
+class-gencat18        = 35849
+class-gencat19        = 16609
+class-gencat2         = 17512
+class-gencat20        = 105841
+class-gencat21        = 52212
+class-gencat22        = 18165
+class-gencat23        = 191558
+class-gencat24        = 155186
+class-gencat25        = 40697
+class-gencat26        = 66346
+class-gencat27        = 71073
+class-gencat28        = 5013
+class-gencat29        = 7982
+class-gencat3         = 7558
+class-gencat30        = 71587
+class-gencat31        = 7783
+class-gencat32        = 7776
+class-gencat33        = 54505
+class-gencat34        = 84507
+class-gencat35        = 6942
+class-gencat36        = 188635
+class-gencat37        = 49191
+class-gencat4         = 4812
+class-gencat5         = 16964
+class-gencat6         = 14614
+class-gencat7         = 17276
+class-gencat8         = 7557
+class-gencat9         = 6735
+class-sentence-break1 = 57836
+class-sentence-break2 = 57836
+class-sentence-break3 = 19436
+class-sentence-break4 = 19436
+class-sentence-break5 = 11873
+class-word-break1     = 6943
+class-word-break2     = 6943
+class-word-break3     = 8197
+class-word-break4     = 7345
+class-word-break5     = 21335
+class1                = 5857
+class10               = 56261
+class2                = 52212
+class3                = 52437
+class4                = 63222
+class5                = 63222
+class6                = 52437
+class7                = 49416
+class8                = 51583
+class9                = 186596
+literal1              = 5013
+literal2              = 5225
+literal3              = 5225
+literal4              = 4805
+perl1                 = 203793
+perl2                 = 203793
+perl3                 = 199014
+perl4                 = 17490
+perl5                 = 17490
+perl6                 = 22228
+perl7                 = 8216
+perl8                 = 8216
+perl9                 = 11900
+
+[utf8]
+empty-utf8no                                  = 3773
+empty-utf8no-anchored                         = 3773
+empty-utf8no-anchored-bounds                  = 3773
+empty-utf8no-anchored-bounds-overlapping      = 3773
+empty-utf8no-anchored-endbound                = 3773
+empty-utf8no-anchored-endbound-overlapping    = 3773
+empty-utf8no-anchored-overlapping             = 3773
+empty-utf8no-anchored-startbound              = 3773
+empty-utf8no-anchored-startbound-overlapping  = 3773
+empty-utf8no-bounds                           = 3773
+empty-utf8no-bounds-overlapping               = 3773
+empty-utf8no-overlapping                      = 3773
+empty-utf8no-startbound                       = 3773
+empty-utf8no-startbound-overlapping           = 3773
+empty-utf8yes                                 = 3918
+empty-utf8yes-anchored                        = 3918
+empty-utf8yes-anchored-bounds                 = 3918
+empty-utf8yes-anchored-bounds-overlapping     = 3918
+empty-utf8yes-anchored-endbound               = 3918
+empty-utf8yes-anchored-endbound-overlapping   = 3918
+empty-utf8yes-anchored-overlapping            = 3918
+empty-utf8yes-anchored-startbound             = 3918
+empty-utf8yes-anchored-startbound-overlapping = 3918
+empty-utf8yes-bounds                          = 3918
+empty-utf8yes-bounds-overlapping              = 3918
+empty-utf8yes-overlapping                     = 3918
+empty-utf8yes-startbound                      = 3918
+empty-utf8yes-startbound-overlapping          = 3918

@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt::Write};
 
 use integration::configure_pikevm_builder;
 use regex_test::{
@@ -9,12 +9,17 @@ use wahgex::{Builder, PikeVM};
 
 mod integration;
 
+#[derive(Debug)]
+struct WasmSizeResult {
+    size: usize,
+    name: String,
+}
+
 #[test]
 fn wasm_module_size_of() {
     let suite = integration::suite().unwrap();
 
-    let mut lines = Vec::new();
-    let max_lens = test_group_max_name_length(&suite);
+    let mut groups: HashMap<&str, Vec<WasmSizeResult>> = HashMap::new();
     let builder = PikeVM::builder();
 
     for test in suite.iter() {
@@ -22,27 +27,52 @@ fn wasm_module_size_of() {
             continue;
         }
 
-        let max_len_test_name = max_lens.get(test.group()).unwrap();
-        let name = test.full_name();
-        let pad = " ".repeat(max_len_test_name - name.len());
         let reg = match compile(builder.clone(), test, test.regexes())
-            .context(format!("compiling regex [{}]", name))
+            .context(format!("compiling regex [{}]", test.full_name()))
             .unwrap()
         {
             CompileOutput::Skip => continue,
             CompileOutput::Compiled(reg) => reg,
         };
 
-        lines.push((name, format!("{name}{pad}:{}", reg.get_wasm().len())))
+        groups
+            .entry(test.group())
+            .or_default()
+            .push(WasmSizeResult {
+                size: reg.get_wasm().len(),
+                name: test.name().into(),
+            });
     }
 
-    lines.sort_by(|a, b| a.0.cmp(b.0));
-    let lines = lines
-        .into_iter()
-        .map(|(_, content)| content)
-        .collect::<Vec<_>>();
+    let formatted = format_grouped_results(groups).unwrap();
 
-    insta::assert_snapshot!(lines.join("\n"));
+    insta::assert_snapshot!(formatted);
+}
+
+fn format_grouped_results(
+    mut groups: HashMap<&str, Vec<WasmSizeResult>>,
+) -> anyhow::Result<String> {
+    let mut formatted = String::new();
+    let mut group_names: Vec<_> = groups.keys().copied().collect();
+    group_names.sort();
+
+    for group in group_names {
+        let mut results = groups.remove(group).unwrap();
+        writeln!(&mut formatted, "[{group}]")?;
+        results.sort_by(|a, b| a.name.cmp(&b.name));
+        let max_name_len = results.iter().map(|res| res.name.len()).max().unwrap_or(0);
+        for res in results {
+            writeln!(
+                &mut formatted,
+                "{name:<width$} = {size}",
+                name = res.name,
+                width = max_name_len,
+                size = res.size
+            )?;
+        }
+        writeln!(&mut formatted)?;
+    }
+    Ok(formatted)
 }
 
 #[derive(Debug)]
@@ -71,21 +101,4 @@ fn compile(
     };
 
     Ok(CompileOutput::Compiled(re))
-}
-
-fn test_group_max_name_length(suite: &regex_test::RegexTests) -> HashMap<&str, usize> {
-    let mut max_lens: HashMap<&str, usize> = HashMap::new();
-    for test in suite.iter() {
-        if !test.compiles() {
-            continue;
-        }
-
-        max_lens
-            .entry(test.group())
-            .and_modify(|len| {
-                *len = (*len).max(test.full_name().len());
-            })
-            .or_insert(test.full_name().len());
-    }
-    max_lens
 }
