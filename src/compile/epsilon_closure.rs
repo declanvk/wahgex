@@ -96,9 +96,9 @@ impl EpsilonClosureFunctions {
         // which has no epsilon transitions. In which case, we need to add the current
         // state to the next set and return.
         instructions
-            .local_get(3)
-            .local_get(4)
-            .local_get(5)
+            .local_get(4) // next_set_len
+            .local_get(5) // state_id
+            .local_get(3) // next_set_ptr
             .call(sparse_set_insert.into())
             .end();
 
@@ -150,22 +150,22 @@ impl EpsilonClosureFunctions {
         // TODO: `haystack_ptr`, `haystack_len`, and `at_offset` will be unused until we
         // support lookahead and need to check the stack
 
-        instructions.local_get(4).local_set(5);
+        instructions.local_get(4);
 
         // TODO(opt): Could optimize this by adding a bulk insert method and loading all
         // of these from a memory location initialized by an active data segment
         for closure_sid in closure {
             instructions
-                .local_get(3)
-                .local_get(5)
+                // new_next_set_len is already on the stack from the prelude or the previous call to
+                // sparse_set_insert
                 .i32_const(i32::from_ne_bytes(closure_sid.as_u32().to_ne_bytes()))
+                .local_get(3) // next_set_ptr
                 // TODO(opt): Instead of creating a separate function for every state's epsilon
                 // transition, have some of them be inlined depending on size.
-                .call(sparse_set_insert.into())
-                .local_set(5);
+                .call(sparse_set_insert.into());
         }
 
-        instructions.local_get(5).end();
+        instructions.end();
 
         Ok(Function {
             name: format!("epsilon_closure_s{}", for_sid.as_usize()),
@@ -384,7 +384,14 @@ mod tests {
             let new_set_len = branch_to_epsilon_closure
                 .call(
                     &mut store,
-                    (haystack_ptr, haystack_len, at_offset, set_ptr, 0, state_id),
+                    (
+                        haystack_ptr,
+                        haystack_len,
+                        at_offset,
+                        set_ptr,
+                        0, /* set_len */
+                        state_id,
+                    ),
                 )
                 .unwrap();
 

@@ -1108,7 +1108,7 @@ mod tests {
             // Write all current states into set
             for state in current_states {
                 current_set_len = set_insert
-                    .call(&mut store, (current_set_ptr, current_set_len, *state))
+                    .call(&mut store, (current_set_len, *state, current_set_ptr))
                     .unwrap();
             }
 

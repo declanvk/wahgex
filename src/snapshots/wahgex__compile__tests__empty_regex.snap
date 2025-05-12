@@ -5,7 +5,7 @@ expression: pretty
 (module
   (type $sparse_set_init_fn (;0;) (func (param i64)))
   (type $sparse_set_contains_fn (;1;) (func (param i64 i32 i32) (result i32)))
-  (type $sparse_set_insert_fn (;2;) (func (param i64 i32 i32) (result i32)))
+  (type $sparse_set_insert_fn (;2;) (func (param i32 i32 i64) (result i32)))
   (type $epsilon_closure_s0_fn (;3;) (func (param i64 i64 i64 i64 i32) (result i32)))
   (type $epsilon_closure_s1_fn (;4;) (func (param i64 i64 i64 i64 i32) (result i32)))
   (type $epsilon_closure_s2_fn (;5;) (func (param i64 i64 i64 i64 i32) (result i32)))
@@ -69,7 +69,7 @@ expression: pretty
     local.get $state_id
     i32.eq
   )
-  (func $sparse_set_insert (;2;) (type $sparse_set_insert_fn) (param $set_ptr i64) (param $set_len i32) (param $state_id i32) (result i32)
+  (func $sparse_set_insert (;2;) (type $sparse_set_insert_fn) (param $set_len i32) (param $state_id i32) (param $set_ptr i64) (result i32)
     local.get $set_ptr
     local.get $set_len
     local.get $state_id
@@ -103,92 +103,58 @@ expression: pretty
   (func $epsilon_closure_s0 (;3;) (type $epsilon_closure_s0_fn) (param $haystack_ptr i64) (param $haystack_len i64) (param $at_offset i64) (param $next_set_ptr i64) (param $next_set_len i32) (result i32)
     (local $new_next_set_len i32)
     local.get $next_set_len
-    local.set $new_next_set_len
-    local.get $next_set_ptr
-    local.get $new_next_set_len
     i32.const 0
-    call $sparse_set_insert
-    local.set $new_next_set_len
     local.get $next_set_ptr
-    local.get $new_next_set_len
+    call $sparse_set_insert
     i32.const 1
-    call $sparse_set_insert
-    local.set $new_next_set_len
     local.get $next_set_ptr
-    local.get $new_next_set_len
+    call $sparse_set_insert
     i32.const 2
-    call $sparse_set_insert
-    local.set $new_next_set_len
     local.get $next_set_ptr
-    local.get $new_next_set_len
+    call $sparse_set_insert
     i32.const 3
-    call $sparse_set_insert
-    local.set $new_next_set_len
     local.get $next_set_ptr
-    local.get $new_next_set_len
-    i32.const 4
     call $sparse_set_insert
-    local.set $new_next_set_len
-    local.get $new_next_set_len
+    i32.const 4
+    local.get $next_set_ptr
+    call $sparse_set_insert
   )
   (func $epsilon_closure_s1 (;4;) (type $epsilon_closure_s1_fn) (param $haystack_ptr i64) (param $haystack_len i64) (param $at_offset i64) (param $next_set_ptr i64) (param $next_set_len i32) (result i32)
     (local $new_next_set_len i32)
     local.get $next_set_len
-    local.set $new_next_set_len
-    local.get $next_set_ptr
-    local.get $new_next_set_len
     i32.const 1
+    local.get $next_set_ptr
     call $sparse_set_insert
-    local.set $new_next_set_len
-    local.get $new_next_set_len
   )
   (func $epsilon_closure_s2 (;5;) (type $epsilon_closure_s2_fn) (param $haystack_ptr i64) (param $haystack_len i64) (param $at_offset i64) (param $next_set_ptr i64) (param $next_set_len i32) (result i32)
     (local $new_next_set_len i32)
     local.get $next_set_len
-    local.set $new_next_set_len
-    local.get $next_set_ptr
-    local.get $new_next_set_len
     i32.const 2
-    call $sparse_set_insert
-    local.set $new_next_set_len
     local.get $next_set_ptr
-    local.get $new_next_set_len
+    call $sparse_set_insert
     i32.const 3
-    call $sparse_set_insert
-    local.set $new_next_set_len
     local.get $next_set_ptr
-    local.get $new_next_set_len
-    i32.const 4
     call $sparse_set_insert
-    local.set $new_next_set_len
-    local.get $new_next_set_len
+    i32.const 4
+    local.get $next_set_ptr
+    call $sparse_set_insert
   )
   (func $epsilon_closure_s3 (;6;) (type $epsilon_closure_s3_fn) (param $haystack_ptr i64) (param $haystack_len i64) (param $at_offset i64) (param $next_set_ptr i64) (param $next_set_len i32) (result i32)
     (local $new_next_set_len i32)
     local.get $next_set_len
-    local.set $new_next_set_len
-    local.get $next_set_ptr
-    local.get $new_next_set_len
     i32.const 3
-    call $sparse_set_insert
-    local.set $new_next_set_len
     local.get $next_set_ptr
-    local.get $new_next_set_len
-    i32.const 4
     call $sparse_set_insert
-    local.set $new_next_set_len
-    local.get $new_next_set_len
+    i32.const 4
+    local.get $next_set_ptr
+    call $sparse_set_insert
   )
   (func $epsilon_closure_s4 (;7;) (type $epsilon_closure_s4_fn) (param $haystack_ptr i64) (param $haystack_len i64) (param $at_offset i64) (param $next_set_ptr i64) (param $next_set_len i32) (result i32)
     (local $new_next_set_len i32)
     local.get $next_set_len
-    local.set $new_next_set_len
-    local.get $next_set_ptr
-    local.get $new_next_set_len
     i32.const 4
+    local.get $next_set_ptr
     call $sparse_set_insert
-    local.set $new_next_set_len
-    local.get $new_next_set_len
   )
   (func $branch_to_epsilon_closure (;8;) (type $branch_to_epsilon_closure_fn) (param $haystack_ptr i64) (param $haystack_len i64) (param $at_offset i64) (param $next_set_ptr i64) (param $next_set_len i32) (param $state_id i32) (result i32)
     local.get $state_id
@@ -251,9 +217,9 @@ expression: pretty
       call $epsilon_closure_s4
       return
     end
-    local.get $next_set_ptr
     local.get $next_set_len
     local.get $state_id
+    local.get $next_set_ptr
     call $sparse_set_insert
   )
   (func $transition_s1 (;9;) (type $transition_s1_fn) (param $haystack_ptr i64) (param $haystack_len i64) (param $at_offset i64) (param $next_set_ptr i64) (param $next_set_len i32) (result i32 i32)

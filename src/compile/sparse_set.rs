@@ -232,33 +232,33 @@ impl SparseSetFunctions {
     fn insert_fn(layout: &SparseSetLayout, contains: FunctionIdx) -> Function {
         let mut locals_name_map = NameMap::new();
         // Parameters
-        locals_name_map.append(0, "set_ptr");
-        locals_name_map.append(1, "set_len");
-        locals_name_map.append(2, "state_id");
+        locals_name_map.append(0, "set_len");
+        locals_name_map.append(1, "state_id");
+        locals_name_map.append(2, "set_ptr");
 
         let mut body = wasm_encoder::Function::new([]);
         body.instructions()
             // if self.contains(id) {
-            //     return false;
+            //     return set_len;
             // }
-            .local_get(0)
-            .local_get(1)
-            .local_get(2)
+            .local_get(2) // set_ptr for contains
+            .local_get(0) // set_len for contains
+            .local_get(1) // state_id for contains
             .call(contains.into())
             .i32_const(true as i32)
             .i32_eq()
             .if_(BlockType::Empty)
-            .local_get(1)
+            .local_get(0) // return current set_len
             .return_()
             .end()
             // self.dense[index] = id;
-            .local_get(1) // set_len as index
+            .local_get(0) // set_len as index
             .i64_extend_i32_u()
             .i64_const(STATE_ID_LAYOUT.size().try_into().unwrap())
             .i64_mul() // need to scale the `state_id` index by the size of the elements of the array
-            .local_get(0) // set_ptr
+            .local_get(2) // set_ptr
             .i64_add()
-            .local_get(2) // state_id
+            .local_get(1) // state_id
             .i32_store(MemArg {
                 // dense is at offset 0
                 offset: 0,
@@ -266,36 +266,30 @@ impl SparseSetFunctions {
                 memory_index: 1,
             })
             // self.sparse[id] = index;
-            .local_get(2) // state_id
+            .local_get(1) // state_id
             .i64_extend_i32_u()
             // TODO(opt): We can dynamically reduce the size of a state ID when the number of states
             // is small. If it fits into a u8 or a u16, we can use those instead of u32.
             .i64_const(STATE_ID_LAYOUT.size().try_into().unwrap())
             .i64_mul() // need to scale the `state_id` index by the size of the elements of the array
-            .local_get(0) // set_ptr
+            .local_get(2) // set_ptr
             .i64_add()
-            .local_get(1) // set_len as index
+            .local_get(0) // set_len as index
             .i32_store(MemArg {
                 // sparse is after dense
                 offset: layout.sparse_array_offset.try_into().unwrap(),
                 align: Layout::new::<u32>().align().ilog2(),
                 memory_index: 1,
             })
-            // the new length = set_len + 1
-            .local_get(1)
+            .local_get(0) // current set_len
             .i32_const(1)
             .i32_add()
             .end();
 
         Function {
             name: "sparse_set_insert".into(),
-            // TODO(opt): Not a real optimization, but it would make the WASM code emitted smaller
-            // if we swap the ordering of the arguments to [set_len, set_ptr, state_id]
-            // so that we can chain insert calls without needing to save and restore the
-            // new_set_len from a local value.
-            //
-            // [set_ptr, set_len, state_id]
-            params_ty: &[ValType::I64, ValType::I32, ValType::I32],
+            // [set_len, state_id, set_ptr]
+            params_ty: &[ValType::I32, ValType::I32, ValType::I64],
             // [new_set_len]
             results_ty: &[ValType::I32],
             export: false,
@@ -340,8 +334,8 @@ pub mod tests {
         store: &wasmi::Store<()>,
     ) -> (
         wasmi::TypedFunc<i64, ()>,
-        wasmi::TypedFunc<(i64, i32, i32), i32>,
-        wasmi::TypedFunc<(i64, i32, i32), i32>,
+        wasmi::TypedFunc<(i64, i32, i32), i32>, // contains: (ptr, len, id) -> bool
+        wasmi::TypedFunc<(i32, i32, i64), i32>, // insert: (len, id, ptr) -> new_len
     ) {
         let sparse_set_init = instance
             .get_typed_func::<i64, ()>(&store, "sparse_set_init")
@@ -352,7 +346,7 @@ pub mod tests {
             .unwrap();
 
         let sparse_set_insert = instance
-            .get_typed_func::<(i64, i32, i32), i32>(&store, "sparse_set_insert")
+            .get_typed_func::<(i32, i32, i64), i32>(&store, "sparse_set_insert")
             .unwrap();
 
         (sparse_set_init, sparse_set_contains, sparse_set_insert)
@@ -410,14 +404,14 @@ pub mod tests {
         // true because 0 was not present in the set
         assert_eq!(res, false as i32);
 
-        let set_len = insert.call(&mut store, (set_ptr, set_len, 0)).unwrap();
+        let set_len = insert.call(&mut store, (set_len, 0, set_ptr)).unwrap();
         assert_eq!(set_len, 1);
 
         let res = contains.call(&mut store, (set_ptr, set_len, 0)).unwrap();
         // true because 0 is already present in the set
         assert_eq!(res, true as i32);
 
-        let set_len = insert.call(&mut store, (set_ptr, set_len, 0)).unwrap();
+        let set_len = insert.call(&mut store, (set_len, 0, set_ptr)).unwrap();
         assert_eq!(set_len, 1);
 
         let res = contains.call(&mut store, (set_ptr, set_len, 0)).unwrap();
@@ -427,7 +421,7 @@ pub mod tests {
         let mut set_len = set_len;
         for state_id in 1..5 {
             let new_set_len = insert
-                .call(&mut store, (set_ptr, set_len, state_id))
+                .call(&mut store, (set_len, state_id, set_ptr))
                 .unwrap();
             assert_eq!(new_set_len, set_len + 1);
             set_len = new_set_len;
@@ -486,19 +480,19 @@ pub mod tests {
 
         for state_id in [4, 1, 0, 2, 3] {
             let new_set_len = insert
-                .call(&mut store, (set_ptr, set_len, state_id))
+                .call(&mut store, (set_len, state_id, set_ptr))
                 .unwrap();
             // true because state_id was not present in the set
             assert_eq!(new_set_len, set_len + 1);
             set_len = new_set_len;
         }
 
-        for state_id in [4, 1, 0, 2, 3] {
+        for state_id_check in [4, 1, 0, 2, 3] {
             let res = contains
-                .call(&mut store, (set_ptr, set_len, state_id))
+                .call(&mut store, (set_ptr, set_len, state_id_check))
                 .unwrap();
             // true because state is already present in the set
-            assert_eq!(res, true as i32, "{state_id} should be present");
+            assert_eq!(res, true as i32, "{state_id_check} should be present");
         }
 
         #[rustfmt::skip]
@@ -529,10 +523,10 @@ pub mod tests {
         let res = contains.call(&mut store, (set_ptr, set_len, 511)).unwrap();
         assert_eq!(res, false as i32);
 
-        let set_len = insert.call(&mut store, (set_ptr, set_len, 256)).unwrap();
+        let set_len = insert.call(&mut store, (set_len, 256, set_ptr)).unwrap();
         assert_eq!(set_len, 1);
 
-        let set_len = insert.call(&mut store, (set_ptr, set_len, 511)).unwrap();
+        let set_len = insert.call(&mut store, (set_len, 511, set_ptr)).unwrap();
         assert_eq!(set_len, 2);
 
         let res = contains.call(&mut store, (set_ptr, set_len, 511)).unwrap();
