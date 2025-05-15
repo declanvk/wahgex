@@ -31,8 +31,11 @@ impl EpsilonClosureFunctions {
         let states = ctx.nfa.states();
 
         for for_sid in (0..states.len()).map(StateID::new).map(Result::unwrap) {
-            let closure_fn =
-                Self::epsilon_closure_fn(for_sid, ctx.nfa.states(), sparse_set_insert)?;
+            let Some(closure_fn) =
+                Self::epsilon_closure_fn(for_sid, ctx.nfa.states(), sparse_set_insert)?
+            else {
+                continue;
+            };
             let closure_idx = ctx.sections.add_function(closure_fn);
             state_closures.insert(for_sid, closure_idx);
         }
@@ -75,6 +78,9 @@ impl EpsilonClosureFunctions {
         let mut states = epsilon_closures.keys().copied().collect::<Vec<_>>();
         states.sort();
 
+        // This loop will cover any states where [`Self::can_omit_epsilon_closure`]
+        // returned false. All other states will fall through to the code below
+        // which inserts only the self-state.
         for sid in states {
             let epsilon_closure_fn = epsilon_closures.get(&sid).copied().unwrap();
             instructions
@@ -125,13 +131,29 @@ impl EpsilonClosureFunctions {
         }
     }
 
+    /// Return true if we can omit the epsilon closure function for the given
+    /// state and closure.
+    ///
+    /// We can omit epsilon closures which only contain the self-state, since
+    /// branch_to_epsilon_closure will always include a default branch to
+    /// populate the singleton set.
+    fn can_omit_epsilon_closure(closure: &EpsilonClosure, for_sid: StateID) -> bool {
+        // TODO: Once we add lookaround, we'll also need to return false from this
+        // function for any state which has lookaround states in its epsilon closure
+        closure.unconditional.len() == 1 && closure.unconditional.contains(&for_sid)
+    }
+
     fn epsilon_closure_fn(
         for_sid: StateID,
         states: &[State],
         sparse_set_insert: FunctionIdx,
-    ) -> Result<Function, BuildError> {
+    ) -> Result<Option<Function>, BuildError> {
         let closure = compute_epsilon_closure(for_sid, states)?;
-        let mut closure = closure.into_iter().collect::<Vec<_>>();
+        if Self::can_omit_epsilon_closure(&closure, for_sid) {
+            return Ok(None);
+        }
+
+        let mut closure = closure.unconditional.into_iter().collect::<Vec<_>>();
         // need this to keep consistency of snapshot tests
         closure.sort();
 
@@ -148,7 +170,7 @@ impl EpsilonClosureFunctions {
         let mut body = wasm_encoder::Function::new([(1, ValType::I32)]);
         let mut instructions = body.instructions();
         // TODO: `haystack_ptr`, `haystack_len`, and `at_offset` will be unused until we
-        // support lookahead and need to check the stack
+        // support lookaround and need to check the stack
 
         instructions.local_get(4);
 
@@ -167,7 +189,7 @@ impl EpsilonClosureFunctions {
 
         instructions.end();
 
-        Ok(Function {
+        Ok(Some(Function {
             name: format!("epsilon_closure_s{}", for_sid.as_usize()),
             // [haystack_ptr, haystack_len, at_offset, next_set_ptr, next_set_len]
             params_ty: &[
@@ -184,17 +206,49 @@ impl EpsilonClosureFunctions {
             locals_name_map,
             labels_name_map: None,
             branch_hints: None,
-        })
+        }))
     }
 }
 
-fn compute_epsilon_closure(sid: StateID, states: &[State]) -> Result<HashSet<StateID>, BuildError> {
-    let mut seen: HashSet<_> = HashSet::new();
+#[derive(Debug)]
+struct EpsilonClosure {
+    /// This is the set of states that are unconditionally epsilon-reachable.
+    ///
+    /// This is contrast to those states that are conditionally
+    /// epsilon-reachable through a [`State::Look`] (lookaround).
+    unconditional: HashSet<StateID>,
+    // /// This is the list of lookaround states that are directly reachable from
+    // /// the `pure` set with no conditional epsilon transitions.
+    // lookaround: Vec<EpsilonLook>,
+}
+
+// #[derive(Debug)]
+// struct EpsilonLook {
+//     current: StateID,
+//     next: StateID,
+//     look: Look,
+// }
+
+// Implementation strategy for lookaround:
+//  1. For epsilon transitions that include a `Look`, add a conditional block
+//     after inserting all the unconditional states. The block should be keyed
+//     on whether or not new states were added to the next_set.
+//  2. Inside the block, we should have the actual `Look` conditionals, based on
+//     the haystack.
+//  3. If the look conditional passes, then recurse into the epsilon closure
+//     function of the `next` state. If that function was omitted (see
+//     `can_omit_epsilon_closure`) then just emit some code that adds the `next`
+//     state to the `next_set`.
+
+fn compute_epsilon_closure(sid: StateID, states: &[State]) -> Result<EpsilonClosure, BuildError> {
+    let mut unconditional: HashSet<_> = HashSet::new();
+
+    // let mut lookaround_states = Vec::new();
 
     let mut stack = vec![sid];
     'stack: while let Some(mut sid) = stack.pop() {
         loop {
-            if !seen.insert(sid) {
+            if !unconditional.insert(sid) {
                 continue 'stack;
             }
 
@@ -208,7 +262,12 @@ fn compute_epsilon_closure(sid: StateID, states: &[State]) -> Result<HashSet<Sta
                     continue 'stack;
                 },
                 State::Look { .. } => {
-                    return Err(BuildError::unsupported("lookahead is not yet implemented"));
+                    // lookaround_states.push(EpsilonLook {
+                    //     current: sid,
+                    //     next: *next,
+                    //     look: *look,
+                    // });
+                    return Err(BuildError::unsupported("lookaround is not yet implemented"));
                 },
                 State::Union { alternates } => {
                     sid = match alternates.first() {
@@ -229,7 +288,9 @@ fn compute_epsilon_closure(sid: StateID, states: &[State]) -> Result<HashSet<Sta
         }
     }
 
-    Ok(seen)
+    // lookaround_states.sort_by(|a, b| a.current.cmp(&b.current));
+
+    Ok(EpsilonClosure { unconditional })
 }
 
 #[cfg(test)]
@@ -272,7 +333,7 @@ mod tests {
         let test = |sid: StateID, expected_states: &[usize]| {
             let closure = compute_epsilon_closure(sid, re.states()).unwrap();
             assert_eq!(
-                closure,
+                closure.unconditional,
                 expected_states
                     .iter()
                     .copied()
@@ -313,7 +374,7 @@ mod tests {
         let test = |sid: StateID, expected_states: &[usize]| {
             let closure = compute_epsilon_closure(sid, re.states()).unwrap();
             assert_eq!(
-                closure,
+                closure.unconditional,
                 expected_states
                     .iter()
                     .copied()
@@ -334,8 +395,8 @@ mod tests {
     }
 
     #[test]
-    #[should_panic = "lookahead is not yet implemented"]
-    fn lookahead_epsilon_closure_panic() {
+    #[should_panic = "lookaround is not yet implemented"]
+    fn lookaround_epsilon_closure_panic() {
         let re = NFA::new(r"(Hello)*\b").unwrap();
         let _closure = compute_epsilon_closure(StateID::ZERO, re.states()).unwrap();
     }
@@ -404,7 +465,7 @@ mod tests {
             )
             .unwrap();
             assert_eq!(
-                epsilon_states.len(),
+                epsilon_states.unconditional.len(),
                 expected_states.len(),
                 "for state [{state_id}]"
             );

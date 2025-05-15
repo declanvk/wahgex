@@ -26,7 +26,7 @@ impl fmt::Display for BuildError {
         match &*self.kind {
             BuildErrorKind::Layout(err) => err.fmt(f),
             BuildErrorKind::NFABuild(err) => err.fmt(f),
-            BuildErrorKind::LookaheadUnicode(err) => err.fmt(f),
+            BuildErrorKind::LookaroundUnicode(err) => err.fmt(f),
             BuildErrorKind::Unsupported(feature) => write!(f, "Unsupported feature: {feature}"),
         }
     }
@@ -37,7 +37,7 @@ impl Error for BuildError {
         match &*self.kind {
             BuildErrorKind::Layout(err) => Some(err),
             BuildErrorKind::NFABuild(err) => Some(err),
-            BuildErrorKind::LookaheadUnicode(err) => Some(err),
+            BuildErrorKind::LookaroundUnicode(err) => Some(err),
             BuildErrorKind::Unsupported(_) => None,
         }
     }
@@ -62,7 +62,7 @@ impl From<regex_automata::nfa::thompson::BuildError> for BuildError {
 impl From<regex_automata::util::look::UnicodeWordBoundaryError> for BuildError {
     fn from(value: regex_automata::util::look::UnicodeWordBoundaryError) -> Self {
         Self {
-            kind: Box::new(BuildErrorKind::LookaheadUnicode(value)),
+            kind: Box::new(BuildErrorKind::LookaroundUnicode(value)),
         }
     }
 }
@@ -72,6 +72,6 @@ impl From<regex_automata::util::look::UnicodeWordBoundaryError> for BuildError {
 enum BuildErrorKind {
     Layout(LayoutError),
     NFABuild(regex_automata::nfa::thompson::BuildError),
-    LookaheadUnicode(regex_automata::util::look::UnicodeWordBoundaryError),
+    LookaroundUnicode(regex_automata::util::look::UnicodeWordBoundaryError),
     Unsupported(&'static str),
 }
