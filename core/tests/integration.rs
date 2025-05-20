@@ -3,7 +3,7 @@ use regex_test::{
     anyhow::{self, bail, Context},
     CompiledRegex, RegexTest, TestResult, TestRunner,
 };
-use wahgex::{Builder, InputOpts, PikeVM, PrepareInputResult};
+use wahgex_core::{Builder, InputOpts, PikeVM, PrepareInputResult};
 
 /// Tests the default configuration of the hybrid NFA/DFA.
 #[test]
@@ -28,7 +28,7 @@ pub fn suite() -> anyhow::Result<regex_test::RegexTests> {
     let mut tests = regex_test::RegexTests::new();
     macro_rules! load {
         ($name:expr) => {{
-            const DATA: &[u8] = include_bytes!(concat!("../testdata/", $name, ".toml"));
+            const DATA: &[u8] = include_bytes!(concat!("../../testdata/", $name, ".toml"));
             tests.load_slice($name, DATA)?;
         }};
     }

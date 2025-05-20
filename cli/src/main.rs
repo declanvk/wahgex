@@ -1,11 +1,11 @@
 use std::{env, iter};
 
-use wahgex::PikeVM;
+use wahgex_core::PikeVM;
 
 fn main() {
     let input = env::args().nth(1).unwrap();
 
-    let regex = wahgex::PikeVM::new(&input).unwrap();
+    let regex = wahgex_core::PikeVM::new(&input).unwrap();
 
     eprint_input_info(&input, &regex);
 

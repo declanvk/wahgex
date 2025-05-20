@@ -5,7 +5,7 @@ use regex_test::{
     anyhow::{self, Context},
     RegexTest,
 };
-use wahgex::{Builder, PikeVM};
+use wahgex_core::{Builder, PikeVM};
 
 mod integration;
 

@@ -1,44 +1,15 @@
-[package]
-name = "wahgex"
-version = "0.1.0"
-license = "MIT OR Apache-2.0"
-repository = "https://github.com/declanvk/wahgex"
-readme = "README.md"
-keywords = []
-categories = []
-edition = "2021"
-rust-version = "1.76"
-
-[dependencies]
-regex-automata = "0.4.9"
-regex-syntax = "0.8.5"
-wasm-encoder = { version = "0.228.0", default-features = false, features = [
-    "std",
-] }
-zerocopy = { version = "0.8.24", features = ["derive", "std"] }
-
-[dev-dependencies]
-insta = "1.42.2"
-regex-syntax = { version = "0.8.5", features = ["arbitrary"] }
-regex-test = "0.1.1"
-wasmi = { workspace = true }
-wasmparser = { workspace = true }
-wasmprinter = { workspace = true }
-
-[profile.dev.package]
-insta.opt-level = 3
-similar.opt-level = 3
-
-[[test]]
-path = "tests/integration.rs"
-name = "integration"
-
 [workspace]
-members = [".", "cli"]
+members = ["core", "cli"]
+resolver = "3"
 
 [workspace.dependencies]
+regex-test = "0.1.1"
 wasmi = "0.44.0"
 wasmparser = { version = "0.228.0", default-features = false, features = [
     "validate",
 ] }
 wasmprinter = { version = "0.228.0", default-features = false }
+
+[profile.dev.package]
+insta.opt-level = 3
+similar.opt-level = 3
