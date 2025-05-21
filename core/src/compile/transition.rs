@@ -255,15 +255,15 @@ impl TransitionFunctions {
             ctx.add_function(Self::branch_to_transition_fn(&state_transitions));
 
         let branch_to_transition_is_match_block_sig = ctx.add_block_signature(BlockSignature {
-                name: "branch_to_transition_is_match",
-                params_ty: &[ValType::I32],
-                results_ty: &[],
-            });
+            name: "branch_to_transition_is_match",
+            params_ty: &[ValType::I32],
+            results_ty: &[],
+        });
 
         let make_current_transitions = ctx.add_function(Self::make_current_transitions_fn(
-                branch_to_transition,
-                branch_to_transition_is_match_block_sig,
-            ));
+            branch_to_transition,
+            branch_to_transition_is_match_block_sig,
+        ));
 
         Self {
             state_transitions,
@@ -387,28 +387,28 @@ impl TransitionFunctions {
 
         Function {
             sig: FunctionSignature {
-            name: "make_current_transitions".into(),
-            // [haystack_ptr, haystack_len, at_offset, current_set_ptr, current_set_len,
-            // next_set_ptr, next_set_len]
-            params_ty: &[
-                ValType::I64,
-                ValType::I64,
-                ValType::I64,
-                ValType::I64,
-                ValType::I32,
-                ValType::I64,
-                ValType::I32,
-            ],
-            // current_set is not modified by this function, so we don't return a new length
-            // [new_next_set_len, is_match]
-            results_ty: &[ValType::I32, ValType::I32],
-            export: false,
+                name: "make_current_transitions".into(),
+                // [haystack_ptr, haystack_len, at_offset, current_set_ptr, current_set_len,
+                // next_set_ptr, next_set_len]
+                params_ty: &[
+                    ValType::I64,
+                    ValType::I64,
+                    ValType::I64,
+                    ValType::I64,
+                    ValType::I32,
+                    ValType::I64,
+                    ValType::I32,
+                ],
+                // current_set is not modified by this function, so we don't return a new length
+                // [new_next_set_len, is_match]
+                results_ty: &[ValType::I32, ValType::I32],
+                export: false,
             },
             def: FunctionDefinition {
-            body,
-            locals_name_map,
-            labels_name_map: Some(labels_name_map),
-            branch_hints: None,
+                body,
+                locals_name_map,
+                labels_name_map: Some(labels_name_map),
+                branch_hints: None,
             },
         }
     }
@@ -453,27 +453,27 @@ impl TransitionFunctions {
 
         Function {
             sig: FunctionSignature {
-            name: "branch_to_transition".into(),
-            // [haystack_ptr, haystack_len, at_offset, next_set_ptr, next_set_len, state_id]
-            params_ty: &[
+                name: "branch_to_transition".into(),
+                // [haystack_ptr, haystack_len, at_offset, next_set_ptr, next_set_len, state_id]
+                params_ty: &[
                     // TODO(opt): Remove haystack_ptr and assume that haystack always starts at
                     // offset 0 in memory 0
-                ValType::I64,
-                ValType::I64,
-                ValType::I64,
-                ValType::I64,
-                ValType::I32,
-                ValType::I32,
-            ],
-            // [new_next_set_len, is_match]
-            results_ty: &[ValType::I32, ValType::I32],
-            export: false,
+                    ValType::I64,
+                    ValType::I64,
+                    ValType::I64,
+                    ValType::I64,
+                    ValType::I32,
+                    ValType::I32,
+                ],
+                // [new_next_set_len, is_match]
+                results_ty: &[ValType::I32, ValType::I32],
+                export: false,
             },
             def: FunctionDefinition {
-            body,
-            locals_name_map,
-            labels_name_map: None,
-            branch_hints: None,
+                body,
+                locals_name_map,
+                labels_name_map: None,
+                branch_hints: None,
             },
         }
     }
@@ -584,24 +584,24 @@ impl TransitionFunctions {
 
         Function {
             sig: FunctionSignature {
-            name: format!("transition_s{}", for_sid.as_usize()),
-            // [haystack_ptr, haystack_len, at_offset, next_set_ptr, next_set_len]
-            params_ty: &[
-                ValType::I64,
-                ValType::I64,
-                ValType::I64,
-                ValType::I64,
-                ValType::I32,
-            ],
-            // [new_next_set_len, is_match]
-            results_ty: &[ValType::I32, ValType::I32],
-            export: false,
+                name: format!("transition_s{}", for_sid.as_usize()),
+                // [haystack_ptr, haystack_len, at_offset, next_set_ptr, next_set_len]
+                params_ty: &[
+                    ValType::I64,
+                    ValType::I64,
+                    ValType::I64,
+                    ValType::I64,
+                    ValType::I32,
+                ],
+                // [new_next_set_len, is_match]
+                results_ty: &[ValType::I32, ValType::I32],
+                export: false,
             },
             def: FunctionDefinition {
-            body,
-            locals_name_map,
-            labels_name_map: Some(labels_name_map),
-            branch_hints: None,
+                body,
+                locals_name_map,
+                labels_name_map: Some(labels_name_map),
+                branch_hints: None,
             },
         }
     }
@@ -862,13 +862,17 @@ impl TransitionFunctions {
 #[cfg(test)]
 mod tests {
     use crate::compile::{
+        lookaround::{LookFunctions, LookLayout},
         sparse_set::{tests::get_sparse_set_fns, SparseSetFunctions, SparseSetLayout},
         tests::setup_interpreter,
     };
 
     use super::*;
 
-    fn branch_to_transition_test_closure(nfa: NFA) -> impl FnMut(i32, u8, Option<&[i32]>, bool) {
+    fn branch_to_transition_test_closure(
+        nfa: NFA,
+        haystack: &[u8],
+    ) -> impl FnMut(i32, usize, &[i32], bool) + '_ {
         let mut ctx = CompileContext::new(
             nfa,
             crate::Config::new()
@@ -879,8 +883,11 @@ mod tests {
         let overall = Layout::new::<()>();
         let (overall, sparse_set_layout) = SparseSetLayout::new(&mut ctx, overall).unwrap();
         let sparse_set_functions = SparseSetFunctions::new(&mut ctx, &sparse_set_layout);
+        let (overall, look_layout) = LookLayout::new(&mut ctx, overall).unwrap();
+        let look_funcs = LookFunctions::new(&mut ctx, &look_layout).unwrap();
         let epsilon_closures =
-            EpsilonClosureFunctions::new(&mut ctx, sparse_set_functions.insert).unwrap();
+            EpsilonClosureFunctions::new(&mut ctx, sparse_set_functions.insert, &look_funcs)
+                .unwrap();
         let (overall, transition_layout) = TransitionLayout::new(&mut ctx, overall).unwrap();
         let _transition_functions =
             TransitionFunctions::new(&mut ctx, &epsilon_closures, &transition_layout);
@@ -898,18 +905,17 @@ mod tests {
         let haystack_memory = instance.get_memory(&store, "haystack").unwrap();
         let state_memory = instance.get_memory(&store, "state").unwrap();
 
+        // Write haystack byte into memory ahead of transition call
+        haystack_memory.data_mut(&mut store)[0..haystack.len()].copy_from_slice(haystack);
+
         move |state_id: i32,
-              byte: u8,
-              expected_next_states: Option<&[i32]>,
+              at_offset: usize,
+              expected_next_states: &[i32],
               expected_is_match: bool| {
             let haystack_ptr = 0;
-            let haystack_len = 1;
-            let at_offset = 0;
+            let haystack_len = haystack.len() as i64;
             let set_ptr = 0;
             let set_len = 0;
-
-            // Write haystack byte into memory ahead of transition call
-            haystack_memory.data_mut(&mut store)[haystack_ptr as usize + at_offset as usize] = byte;
 
             let (new_set_len, is_match) = branch_to_transition
                 .call(
@@ -917,7 +923,7 @@ mod tests {
                     (
                         haystack_ptr,
                         haystack_len,
-                        at_offset,
+                        at_offset as i64,
                         set_ptr,
                         set_len,
                         state_id,
@@ -925,29 +931,21 @@ mod tests {
                 )
                 .unwrap();
 
+            let byte = haystack.get(at_offset).copied().unwrap_or(u8::MAX);
+
             assert_eq!(
                 is_match, expected_is_match as i32,
-                "{state_id} => {byte}/{}",
+                "{state_id} @ {at_offset} => {byte}/{}",
                 byte as char
             );
 
-            if let Some(expected_next_states) = expected_next_states {
-                assert_eq!(
-                    new_set_len,
-                    expected_next_states.len() as i32,
-                    "{state_id} => {byte}/{}",
-                    byte as char
-                );
-                let states = &unsafe { state_memory.data(&store).align_to::<i32>().1 }
-                    [0..expected_next_states.len()];
-                assert_eq!(
-                    states, expected_next_states,
-                    "{state_id} => {byte}/{}",
-                    byte as char
-                );
-            } else {
-                assert_eq!(new_set_len, 0, "{state_id} => {byte}/{}", byte as char);
-            }
+            let states = &unsafe { state_memory.data(&store).align_to::<i32>().1 }
+                [0..usize::try_from(new_set_len).unwrap()];
+            assert_eq!(
+                states, expected_next_states,
+                "{state_id} @ {at_offset} => {byte}/{}",
+                byte as char
+            );
         }
     }
 
@@ -965,50 +963,50 @@ mod tests {
         //      000008: MATCH(0)
         let nfa = NFA::new("(?:abc)+").unwrap();
 
-        let mut test = branch_to_transition_test_closure(nfa);
+        let mut test = branch_to_transition_test_closure(nfa, b"abc");
 
         // State 0:
-        test(0, b'a', None, false);
-        test(0, b'b', None, false);
-        test(0, b'c', None, false);
+        test(0, 0, &[], false);
+        test(0, 1, &[], false);
+        test(0, 2, &[], false);
 
         // State 1: \x00-\xFF => 0
-        test(1, b'a', Some(&[0, 1, 2, 3]), false);
-        test(1, b'b', Some(&[0, 1, 2, 3]), false);
-        test(1, b'c', Some(&[0, 1, 2, 3]), false);
+        test(1, 0, &[0, 1, 2, 3], false);
+        test(1, 1, &[0, 1, 2, 3], false);
+        test(1, 2, &[0, 1, 2, 3], false);
 
         // State 2: capture(pid=0, group=0, slot=0) => 3
-        test(2, b'a', None, false);
-        test(2, b'b', None, false);
-        test(2, b'c', None, false);
+        test(2, 0, &[], false);
+        test(2, 1, &[], false);
+        test(2, 2, &[], false);
 
         // State 3: a => 4
-        test(3, b'a', Some(&[4]), false);
-        test(3, b'b', None, false);
-        test(3, b'c', None, false);
+        test(3, 0, &[4], false);
+        test(3, 1, &[], false);
+        test(3, 2, &[], false);
 
         // State 4: b => 5
-        test(4, b'a', None, false);
-        test(4, b'b', Some(&[5]), false);
-        test(4, b'c', None, false);
+        test(4, 0, &[], false);
+        test(4, 1, &[5], false);
+        test(4, 2, &[], false);
 
         // State 5: c => 6 + epsilon transitions
-        test(5, b'a', None, false);
-        test(5, b'b', None, false);
-        test(5, b'c', Some(&[3, 6, 7, 8]), false);
+        test(5, 0, &[], false);
+        test(5, 1, &[], false);
+        test(5, 2, &[3, 6, 7, 8], false);
 
         // State 6: binary-union(3, 7)
-        test(6, b'a', None, false);
-        test(6, b'b', None, false);
-        test(6, b'c', None, false);
+        test(6, 0, &[], false);
+        test(6, 1, &[], false);
+        test(6, 2, &[], false);
 
         // State 7: capture(pid=0, group=0, slot=1) => 8
-        test(7, b'a', None, false);
-        test(7, b'b', None, false);
-        test(7, b'c', None, false);
+        test(7, 0, &[], false);
+        test(7, 1, &[], false);
+        test(7, 2, &[], false);
 
         // State 8: MATCH(0)
-        test(8, b'a', None, true);
+        test(8, 0, &[], true);
     }
 
     #[test]
@@ -1025,46 +1023,83 @@ mod tests {
         //      000008: MATCH(0)
         let nfa = NFA::new("ac|bc|dc|e|g").unwrap();
 
-        let mut test = branch_to_transition_test_closure(nfa);
+        let mut test = branch_to_transition_test_closure(nfa, b"acbcdceg");
 
         // State 0: binary-union(2, 1)
-        for byte in [b'a', b'b', b'd', b'e', b'g'] {
-            test(0, byte, None, false);
+        for byte in [0, 2, 4, 6, 7] {
+            test(0, byte, &[], false);
         }
 
         // State 1: \x00-\xFF => 0
-        for byte in [b'a', b'b', b'd', b'e', b'g'] {
-            test(1, byte, Some(&[0, 1, 2, 6]), false);
+        for byte in [0, 2, 4, 6, 7] {
+            test(1, byte, &[0, 1, 2, 6], false);
         }
 
         // State 2: capture(pid=0, group=0, slot=0) => 8
-        for byte in [b'a', b'b', b'd', b'e', b'g'] {
-            test(2, byte, None, false);
+        for byte in [0, 2, 4, 6, 7] {
+            test(2, byte, &[], false);
         }
 
         for state in [3, 4, 5] {
             // State 3/4/5: c => 7
-            test(state, b'a', None, false);
-            test(state, b'b', None, false);
-            test(state, b'c', Some(&[7, 8]), false);
+            test(state, 0, &[], false);
+            test(state, 2, &[], false);
+            test(state, 1, &[7, 8], false);
         }
 
         // State 6: sparse(a => 3, b => 4, d => 5, e => 7, g => 7)
-        test(6, b'a', Some(&[3]), false);
-        test(6, b'b', Some(&[4]), false);
-        test(6, b'd', Some(&[5]), false);
-        test(6, b'e', Some(&[7, 8]), false);
-        test(6, b'g', Some(&[7, 8]), false);
+        test(6, 0, &[3], false);
+        test(6, 2, &[4], false);
+        test(6, 4, &[5], false);
+        test(6, 6, &[7, 8], false);
+        test(6, 7, &[7, 8], false);
 
         // State 7: capture(pid=0, group=0, slot=1) => 8
-        for byte in [b'a', b'b', b'd', b'e', b'g'] {
-            test(7, byte, None, false);
+        for byte in [0, 2, 4, 6, 7] {
+            test(7, byte, &[], false);
         }
 
         // State 8: MATCH(0)
-        for byte in [b'a', b'b', b'd', b'e', b'g'] {
-            test(8, byte, None, true);
+        for byte in [0, 2, 4, 6, 7] {
+            test(8, byte, &[], true);
         }
+    }
+
+    #[test]
+    fn branch_to_simple_lookaround_transitions() {
+        // thompson::NFA(
+        // ^000000: capture(pid=0, group=0, slot=0) => 1
+        //  000001: Start => 2
+        //  000002: h => 3
+        //  000003: e => 4
+        //  000004: l => 5
+        //  000005: l => 6
+        //  000006: ' ' => 7
+        //  000007: w => 8
+        //  000008: o => 9
+        //  000009: r => 10
+        //  000010: m => 11
+        //  000011: End => 12
+        //  000012: capture(pid=0, group=0, slot=1) => 13
+        //  000013: MATCH(0)
+        let nfa = NFA::new("^hell worm$").unwrap();
+
+        let mut test = branch_to_transition_test_closure(nfa, b"hell worm");
+
+        test(0, 0, &[], false);
+        test(1, 0, &[], false);
+        test(2, 0, &[3], false);
+        test(3, 1, &[4], false);
+        test(4, 2, &[5], false);
+        test(5, 3, &[6], false);
+        test(6, 4, &[7], false);
+        test(7, 5, &[8], false);
+        test(8, 6, &[9], false);
+        test(9, 7, &[10], false);
+        test(10, 8, &[11, 12, 13], false);
+        test(11, 9, &[], false);
+        test(12, 0, &[], false);
+        test(13, 0, &[], true);
     }
 
     // It seems like `DenseTransitions` are not constructed in the internal
@@ -1084,10 +1119,14 @@ mod tests {
 
         let (overall, current_set_layout) = SparseSetLayout::new(&mut ctx, overall).unwrap();
         let (overall, next_set_layout) = SparseSetLayout::new(&mut ctx, overall).unwrap();
+        let (overall, look_layout) = LookLayout::new(&mut ctx, overall).unwrap();
+
         let sparse_set_functions = SparseSetFunctions::new(&mut ctx, &current_set_layout);
+        let look_funcs = LookFunctions::new(&mut ctx, &look_layout).unwrap();
 
         let epsilon_closures =
-            EpsilonClosureFunctions::new(&mut ctx, sparse_set_functions.insert).unwrap();
+            EpsilonClosureFunctions::new(&mut ctx, sparse_set_functions.insert, &look_funcs)
+                .unwrap();
 
         let (overall, transition_layout) = TransitionLayout::new(&mut ctx, overall).unwrap();
         let _transition_functions =

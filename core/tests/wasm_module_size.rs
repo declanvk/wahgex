@@ -1,13 +1,13 @@
 use std::{collections::HashMap, fmt::Write};
 
-use integration::configure_pikevm_builder;
+use common::configure_pikevm_builder;
 use regex_test::{
     anyhow::{self, Context},
     RegexTest,
 };
 use wahgex_core::{Builder, PikeVM};
 
-mod integration;
+mod common;
 
 #[derive(Debug)]
 struct WasmSizeResult {
@@ -17,7 +17,7 @@ struct WasmSizeResult {
 
 #[test]
 fn wasm_module_size_of() {
-    let suite = integration::suite().unwrap();
+    let suite = common::suite().unwrap();
 
     let mut groups: HashMap<&str, Vec<WasmSizeResult>> = HashMap::new();
     let builder = PikeVM::builder();

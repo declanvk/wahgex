@@ -5,6 +5,7 @@ use std::alloc::{Layout, LayoutError};
 
 use super::{
     epsilon_closure::EpsilonClosureFunctions,
+    lookaround::{LookFunctions, LookLayout},
     pattern::{PatternFunctions, PatternLayout},
     sparse_set::{SparseSetFunctions, SparseSetLayout},
     transition::{TransitionFunctions, TransitionLayout},
@@ -20,6 +21,7 @@ pub struct StateLayout {
     pub first_sparse_set: SparseSetLayout,
     pub second_sparse_set: SparseSetLayout,
     pattern: PatternLayout,
+    look: LookLayout,
 }
 
 impl StateLayout {
@@ -32,6 +34,7 @@ impl StateLayout {
         let (overall, first_sparse_set) = SparseSetLayout::new(ctx, overall)?;
         let (overall, second_sparse_set) = SparseSetLayout::new(ctx, overall)?;
         let (overall, pattern) = PatternLayout::new(ctx, overall)?;
+        let (overall, look) = LookLayout::new(ctx, overall)?;
 
         let overall = overall.pad_to_align();
 
@@ -41,6 +44,7 @@ impl StateLayout {
             first_sparse_set,
             second_sparse_set,
             pattern,
+            look,
         })
     }
 }
@@ -62,7 +66,8 @@ impl StateFunctions {
         // It shouldn't matter if we pass the first or the second sparse set, since they
         // have the same
         let sparse_set = SparseSetFunctions::new(ctx, &layout.first_sparse_set);
-        let epsilon_closure = EpsilonClosureFunctions::new(ctx, sparse_set.insert)?;
+        let look_funcs = LookFunctions::new(ctx, &layout.look)?;
+        let epsilon_closure = EpsilonClosureFunctions::new(ctx, sparse_set.insert, &look_funcs)?;
         let transition = TransitionFunctions::new(ctx, &epsilon_closure, &layout.transition);
         let pattern = PatternFunctions::new(ctx, &layout.pattern);
 

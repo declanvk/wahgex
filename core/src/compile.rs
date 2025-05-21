@@ -16,6 +16,7 @@ const STATE_ID_LAYOUT: Layout = Layout::new::<u32>();
 mod context;
 mod epsilon_closure;
 pub mod input;
+mod lookaround;
 mod matching;
 mod pattern;
 mod sparse_set;
@@ -129,6 +130,20 @@ mod tests {
     #[test]
     fn sparse_transitions() {
         let compiled = compile("a|b|d|e|g").unwrap();
+        let pretty = wasm_print_module(&compiled);
+        insta::assert_snapshot!(pretty);
+    }
+
+    #[test]
+    fn simple_lookaround() {
+        let compiled = compile("^hell worm$").unwrap();
+        let pretty = wasm_print_module(&compiled);
+        insta::assert_snapshot!(pretty);
+    }
+
+    #[test]
+    fn repeated_lookaround() {
+        let compiled = compile("(?:^|$)+").unwrap();
         let pretty = wasm_print_module(&compiled);
         insta::assert_snapshot!(pretty);
     }
