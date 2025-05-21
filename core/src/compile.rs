@@ -147,4 +147,18 @@ mod tests {
         let pretty = wasm_print_module(&compiled);
         insta::assert_snapshot!(pretty);
     }
+
+    #[test]
+    fn lookaround_crlf() {
+        let compiled = compile("(?mR)^[a-z]+$").unwrap();
+        let pretty = wasm_print_module(&compiled);
+        insta::assert_snapshot!(pretty);
+    }
+
+    #[test]
+    fn lookaround_lf() {
+        let compiled = compile("(?m)^$").unwrap();
+        let pretty = wasm_print_module(&compiled);
+        insta::assert_snapshot!(pretty);
+    }
 }
