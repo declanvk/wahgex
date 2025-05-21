@@ -7,7 +7,7 @@ use regex_automata::{nfa::thompson::State, util::primitives::StateID};
 use wasm_encoder::{NameMap, ValType};
 
 use super::{
-    context::{Function, FunctionIdx},
+    context::{Function, FunctionDefinition, FunctionIdx, FunctionSignature},
     BuildError, CompileContext,
 };
 
@@ -36,16 +36,14 @@ impl EpsilonClosureFunctions {
             else {
                 continue;
             };
-            let closure_idx = ctx.sections.add_function(closure_fn);
+            let closure_idx = ctx.add_function(closure_fn);
             state_closures.insert(for_sid, closure_idx);
         }
 
-        let branch_to_epsilon_closure =
-            ctx.sections
-                .add_function(Self::branch_to_epsilon_closure_fn(
-                    &state_closures,
-                    sparse_set_insert,
-                ));
+        let branch_to_epsilon_closure = ctx.add_function(Self::branch_to_epsilon_closure_fn(
+            &state_closures,
+            sparse_set_insert,
+        ));
 
         Ok(Self {
             state_closures,
@@ -109,25 +107,29 @@ impl EpsilonClosureFunctions {
             .end();
 
         Function {
-            name: "branch_to_epsilon_closure".into(),
-            // [haystack_ptr, haystack_len, at_offset, next_set_ptr, next_set_len, state_id]
-            params_ty: &[
-                // TODO(opt): Remove haystack_ptr and assume that haystack always starts at offset
-                // 0 in memory 0
-                ValType::I64,
-                ValType::I64,
-                ValType::I64,
-                ValType::I64,
-                ValType::I32,
-                ValType::I32,
-            ],
-            // [new_next_set_len]
-            results_ty: &[ValType::I32],
-            export: false,
-            body,
-            locals_name_map,
-            labels_name_map: None,
-            branch_hints: None,
+            sig: FunctionSignature {
+                name: "branch_to_epsilon_closure".into(),
+                // [haystack_ptr, haystack_len, at_offset, next_set_ptr, next_set_len, state_id]
+                params_ty: &[
+                    // TODO(opt): Remove haystack_ptr and assume that haystack always starts at
+                    // offset 0 in memory 0
+                    ValType::I64,
+                    ValType::I64,
+                    ValType::I64,
+                    ValType::I64,
+                    ValType::I32,
+                    ValType::I32,
+                ],
+                // [new_next_set_len]
+                results_ty: &[ValType::I32],
+                export: false,
+            },
+            def: FunctionDefinition {
+                body,
+                locals_name_map,
+                labels_name_map: None,
+                branch_hints: None,
+            },
         }
     }
 
@@ -190,22 +192,26 @@ impl EpsilonClosureFunctions {
         instructions.end();
 
         Ok(Some(Function {
-            name: format!("epsilon_closure_s{}", for_sid.as_usize()),
-            // [haystack_ptr, haystack_len, at_offset, next_set_ptr, next_set_len]
-            params_ty: &[
-                ValType::I64,
-                ValType::I64,
-                ValType::I64,
-                ValType::I64,
-                ValType::I32,
-            ],
-            // [new_next_set_len]
-            results_ty: &[ValType::I32],
-            export: false,
-            body,
-            locals_name_map,
-            labels_name_map: None,
-            branch_hints: None,
+            sig: FunctionSignature {
+                name: format!("epsilon_closure_s{}", for_sid.as_usize()),
+                // [haystack_ptr, haystack_len, at_offset, next_set_ptr, next_set_len]
+                params_ty: &[
+                    ValType::I64,
+                    ValType::I64,
+                    ValType::I64,
+                    ValType::I64,
+                    ValType::I32,
+                ],
+                // [new_next_set_len]
+                results_ty: &[ValType::I32],
+                export: false,
+            },
+            def: FunctionDefinition {
+                body,
+                locals_name_map,
+                labels_name_map: None,
+                branch_hints: None,
+            },
         }))
     }
 }

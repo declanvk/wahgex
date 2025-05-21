@@ -25,7 +25,7 @@ expression: pretty
   (type $make_current_transitions_is_match_block_sig (;19;) (func (param i32)))
   (type $is_match_fn (;20;) (func (param i32 i32 i64 i64 i64) (result i32)))
   (memory $haystack (;0;) i64 1)
-  (memory $state (;1;) i64 1)
+  (memory $state (;1;) i64 1 1)
   (export "prepare_input" (func $prepare_input))
   (export "is_match" (func $is_match))
   (export "haystack" (memory $haystack))

@@ -6,7 +6,10 @@ use std::alloc::{Layout, LayoutError};
 use regex_automata::{nfa::thompson::NFA, Anchored};
 use wasm_encoder::{BlockType, NameMap, ValType};
 
-use super::context::{BlockSignature, CompileContext, Function, FunctionIdx, TypeIdx};
+use super::context::{
+    BlockSignature, CompileContext, Function, FunctionDefinition, FunctionIdx, FunctionSignature,
+    TypeIdx,
+};
 
 /// This type is a mirror of [`regex_automata::Input`], with guaranteed
 /// alignment and no-substructs.
@@ -50,7 +53,7 @@ impl InputOpts {
 #[derive(Debug)]
 pub struct InputLayout {
     pub haystack_start_pos: usize,
-    overall: Layout,
+    _overall: Layout,
 }
 
 impl InputLayout {
@@ -63,7 +66,7 @@ impl InputLayout {
         let (overall, haystack_start_pos) = overall.extend(Layout::array::<u8>(0)?)?;
 
         Ok(Self {
-            overall,
+            _overall: overall,
             haystack_start_pos,
         })
     }
@@ -86,26 +89,25 @@ impl InputFunctions {
         input_layout: &InputLayout,
         pattern_lookup_start: FunctionIdx,
     ) -> Self {
-        let prepare_input = ctx.sections.add_function(Self::prepare_input_fn(
+        let prepare_input = ctx.add_function(Self::prepare_input_fn(
             ctx.config.get_page_size(),
             input_layout,
         ));
-        let assert_input_args_wf = ctx.sections.add_function(Self::assert_input_args_wf_fn(
+        let assert_input_args_wf = ctx.add_function(Self::assert_input_args_wf_fn(
             ctx.config.get_page_size(),
             input_layout,
         ));
 
         let utf8_is_boundary = (ctx.nfa.has_empty() && ctx.nfa.is_utf8())
-            .then(|| ctx.sections.add_function(Self::utf8_is_boundary_fn()));
+            .then(|| ctx.add_function(Self::utf8_is_boundary_fn()));
 
-        let pattern_lookup_start_result_block_sig =
-            ctx.sections.add_block_signature(BlockSignature {
-                name: "pattern_lookup_start_result",
-                params_ty: &[ValType::I32],
-                results_ty: &[],
-            });
+        let pattern_lookup_start_result_block_sig = ctx.add_block_signature(BlockSignature {
+            name: "pattern_lookup_start_result",
+            params_ty: &[ValType::I32],
+            results_ty: &[],
+        });
 
-        let start_config = ctx.sections.add_function(Self::start_config_fn(
+        let start_config = ctx.add_function(Self::start_config_fn(
             &ctx.nfa,
             pattern_lookup_start,
             pattern_lookup_start_result_block_sig,
@@ -200,16 +202,20 @@ impl InputFunctions {
             .end();
 
         Function {
-            name: "start_config".into(),
-            // [anchored, anchored_pattern]
-            params_ty: &[ValType::I32, ValType::I32],
-            // [start_state_id, is_anchored, is_some]
-            results_ty: &[ValType::I32, ValType::I32, ValType::I32],
-            export: false,
-            body,
-            locals_name_map,
-            labels_name_map: None,
-            branch_hints: None,
+            sig: FunctionSignature {
+                name: "start_config".into(),
+                // [anchored, anchored_pattern]
+                params_ty: &[ValType::I32, ValType::I32],
+                // [start_state_id, is_anchored, is_some]
+                results_ty: &[ValType::I32, ValType::I32, ValType::I32],
+                export: false,
+            },
+            def: FunctionDefinition {
+                body,
+                locals_name_map,
+                labels_name_map: None,
+                branch_hints: None,
+            },
         }
     }
 
@@ -268,16 +274,20 @@ impl InputFunctions {
             .end();
 
         Function {
-            name: "utf8_is_boundary".into(),
-            // [haystack_ptr, haystack_len, at_offset]
-            params_ty: &[ValType::I64, ValType::I64, ValType::I64],
-            // [is_boundary]
-            results_ty: &[ValType::I32],
-            export: false,
-            body,
-            locals_name_map,
-            labels_name_map: None,
-            branch_hints: None,
+            sig: FunctionSignature {
+                name: "utf8_is_boundary".into(),
+                // [haystack_ptr, haystack_len, at_offset]
+                params_ty: &[ValType::I64, ValType::I64, ValType::I64],
+                // [is_boundary]
+                results_ty: &[ValType::I32],
+                export: false,
+            },
+            def: FunctionDefinition {
+                body,
+                locals_name_map,
+                labels_name_map: None,
+                branch_hints: None,
+            },
         }
     }
 
@@ -371,21 +381,25 @@ impl InputFunctions {
             .end();
 
         Function {
-            name: "assert_input_args_wf".into(),
-            params_ty: &[
-                ValType::I32,
-                ValType::I32,
-                ValType::I32,
-                ValType::I64,
-                ValType::I64,
-                ValType::I64,
-            ],
-            results_ty: &[],
-            export: false,
-            body,
-            locals_name_map,
-            labels_name_map: Some(labels_name_map),
-            branch_hints: None,
+            sig: FunctionSignature {
+                name: "assert_input_args_wf".into(),
+                params_ty: &[
+                    ValType::I32,
+                    ValType::I32,
+                    ValType::I32,
+                    ValType::I64,
+                    ValType::I64,
+                    ValType::I64,
+                ],
+                results_ty: &[],
+                export: false,
+            },
+            def: FunctionDefinition {
+                body,
+                locals_name_map,
+                labels_name_map: Some(labels_name_map),
+                branch_hints: None,
+            },
         }
     }
 
@@ -454,16 +468,20 @@ impl InputFunctions {
             .end();
 
         Function {
-            name: "prepare_input".into(),
-            // [haystack_len]
-            params_ty: &[ValType::I64],
-            // [prepare_input_result]
-            results_ty: &[ValType::I32],
-            export: true,
-            body,
-            locals_name_map,
-            labels_name_map: None,
-            branch_hints: None,
+            sig: FunctionSignature {
+                name: "prepare_input".into(),
+                // [haystack_len]
+                params_ty: &[ValType::I64],
+                // [prepare_input_result]
+                results_ty: &[ValType::I32],
+                export: true,
+            },
+            def: FunctionDefinition {
+                body,
+                locals_name_map,
+                labels_name_map: None,
+                branch_hints: None,
+            },
         }
     }
 }
@@ -536,7 +554,7 @@ mod tests {
 
         // This haystack_len should fill the entire extent of the default-sized haystack
         // memory
-        let haystack_len = i64::try_from(page_size - input_layout.overall.size()).unwrap();
+        let haystack_len = i64::try_from(page_size - input_layout._overall.size()).unwrap();
         let res = prepare_input.call(&mut store, haystack_len).unwrap();
         assert_eq!(res, PrepareInputResult::SuccessNoGrowth as i32);
 
@@ -545,7 +563,7 @@ mod tests {
 
         // This haystack_len should cause the haystack memory to increase by 1 page size
         let haystack_len =
-            i64::try_from(page_size - input_layout.overall.size() + page_size).unwrap();
+            i64::try_from(page_size - input_layout._overall.size() + page_size).unwrap();
         let res = prepare_input.call(&mut store, haystack_len).unwrap();
         assert_eq!(res, PrepareInputResult::SuccessGrowth as i32);
 

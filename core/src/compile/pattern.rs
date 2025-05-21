@@ -9,7 +9,10 @@ use wasm_encoder::{MemArg, NameMap, ValType};
 use crate::util::repeat;
 
 use super::{
-    context::{ActiveDataSegment, CompileContext, Function, FunctionIdx},
+    context::{
+        ActiveDataSegment, CompileContext, Function, FunctionDefinition, FunctionIdx,
+        FunctionSignature,
+    },
     STATE_ID_LAYOUT,
 };
 
@@ -58,9 +61,7 @@ pub struct PatternFunctions {
 
 impl PatternFunctions {
     pub fn new(ctx: &mut CompileContext, layout: &PatternLayout) -> Self {
-        let start_id = ctx
-            .sections
-            .add_function(Self::lookup_start_fn(&ctx.nfa, layout));
+        let start_id = ctx.add_function(Self::lookup_start_fn(&ctx.nfa, layout));
 
         Self {
             lookup_start: start_id,
@@ -114,16 +115,20 @@ impl PatternFunctions {
             .end();
 
         Function {
-            name: "lookup_start_id".into(),
-            // [pattern_id]
-            params_ty: &[ValType::I32],
-            // [start_state_id, is_some]
-            results_ty: &[ValType::I32, ValType::I32],
-            export: false,
-            body,
-            locals_name_map,
-            labels_name_map: None,
-            branch_hints: None,
+            sig: FunctionSignature {
+                name: "lookup_start_id".into(),
+                // [pattern_id]
+                params_ty: &[ValType::I32],
+                // [start_state_id, is_some]
+                results_ty: &[ValType::I32, ValType::I32],
+                export: false,
+            },
+            def: FunctionDefinition {
+                body,
+                locals_name_map,
+                labels_name_map: None,
+                branch_hints: None,
+            },
         }
     }
 }

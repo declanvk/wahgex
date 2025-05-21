@@ -9,7 +9,7 @@ fn main() {
 
     eprint_input_info(&input, &regex);
 
-    let pretty_wasm = wasm_print_module(&regex.get_wasm());
+    let pretty_wasm = wasm_print_module(regex.get_wasm());
 
     println!("{}", pretty_wasm);
 }

@@ -16,7 +16,10 @@ use wasm_encoder::{BlockType, InstructionSink, MemArg, NameMap, ValType};
 use crate::util::repeat;
 
 use super::{
-    context::{ActiveDataSegment, BlockSignature, Function, FunctionIdx, TypeIdx},
+    context::{
+        ActiveDataSegment, BlockSignature, Function, FunctionDefinition, FunctionIdx,
+        FunctionSignature, TypeIdx,
+    },
     epsilon_closure::EpsilonClosureFunctions,
     CompileContext, STATE_ID_LAYOUT,
 };
@@ -244,23 +247,20 @@ impl TransitionFunctions {
                 epsilon_closures.branch_to_epsilon_closure,
                 transition_layout.get(for_sid),
             );
-            let transition_idx = ctx.sections.add_function(transition_fn);
+            let transition_idx = ctx.add_function(transition_fn);
             state_transitions.insert(for_sid, transition_idx);
         }
 
-        let branch_to_transition = ctx
-            .sections
-            .add_function(Self::branch_to_transition_fn(&state_transitions));
+        let branch_to_transition =
+            ctx.add_function(Self::branch_to_transition_fn(&state_transitions));
 
-        let branch_to_transition_is_match_block_sig =
-            ctx.sections.add_block_signature(BlockSignature {
+        let branch_to_transition_is_match_block_sig = ctx.add_block_signature(BlockSignature {
                 name: "branch_to_transition_is_match",
                 params_ty: &[ValType::I32],
                 results_ty: &[],
             });
 
-        let make_current_transitions =
-            ctx.sections.add_function(Self::make_current_transitions_fn(
+        let make_current_transitions = ctx.add_function(Self::make_current_transitions_fn(
                 branch_to_transition,
                 branch_to_transition_is_match_block_sig,
             ));
@@ -386,6 +386,7 @@ impl TransitionFunctions {
             .end();
 
         Function {
+            sig: FunctionSignature {
             name: "make_current_transitions".into(),
             // [haystack_ptr, haystack_len, at_offset, current_set_ptr, current_set_len,
             // next_set_ptr, next_set_len]
@@ -402,10 +403,13 @@ impl TransitionFunctions {
             // [new_next_set_len, is_match]
             results_ty: &[ValType::I32, ValType::I32],
             export: false,
+            },
+            def: FunctionDefinition {
             body,
             locals_name_map,
             labels_name_map: Some(labels_name_map),
             branch_hints: None,
+            },
         }
     }
 
@@ -448,11 +452,12 @@ impl TransitionFunctions {
         instructions.local_get(4).i32_const(false as i32).end();
 
         Function {
+            sig: FunctionSignature {
             name: "branch_to_transition".into(),
             // [haystack_ptr, haystack_len, at_offset, next_set_ptr, next_set_len, state_id]
             params_ty: &[
-                // TODO(opt): Remove haystack_ptr and assume that haystack always starts at offset
-                // 0 in memory 0
+                    // TODO(opt): Remove haystack_ptr and assume that haystack always starts at
+                    // offset 0 in memory 0
                 ValType::I64,
                 ValType::I64,
                 ValType::I64,
@@ -463,10 +468,13 @@ impl TransitionFunctions {
             // [new_next_set_len, is_match]
             results_ty: &[ValType::I32, ValType::I32],
             export: false,
+            },
+            def: FunctionDefinition {
             body,
             locals_name_map,
             labels_name_map: None,
             branch_hints: None,
+            },
         }
     }
 
@@ -575,6 +583,7 @@ impl TransitionFunctions {
         instructions.end();
 
         Function {
+            sig: FunctionSignature {
             name: format!("transition_s{}", for_sid.as_usize()),
             // [haystack_ptr, haystack_len, at_offset, next_set_ptr, next_set_len]
             params_ty: &[
@@ -587,10 +596,13 @@ impl TransitionFunctions {
             // [new_next_set_len, is_match]
             results_ty: &[ValType::I32, ValType::I32],
             export: false,
+            },
+            def: FunctionDefinition {
             body,
             locals_name_map,
             labels_name_map: Some(labels_name_map),
             branch_hints: None,
+            },
         }
     }
 
@@ -617,6 +629,9 @@ impl TransitionFunctions {
             .i32_const(false as i32)
             .return_()
             .end() // end if at_offset >= haystack_len
+            // TODO(opt): We can make haystack_ptr a constant if we thread through the input layout
+            // and expose it as a field instead. Since we always expect to place the input haystack
+            // in the same spot, while the haystack_len may vary
             .local_get(0) // haystack_ptr
             .local_get(2) // at_offset
             .i64_add()
@@ -647,6 +662,10 @@ impl TransitionFunctions {
             .local_get(3) // next_set_ptr
             .local_get(4) // next_set_len
             .local_get(6) // next_state
+            // TODO(opt): Instead of calling indirectly to find get the right epsilon closure
+            // function, we could pipe through what the expected next state is and branch directly
+            // to that epsilon closure function if present (or add next state to the set if not
+            // present)
             .call(branch_to_epsilon_closure.into()) // returns new_next_set_len
             // return None
             .i32_const(false as i32);

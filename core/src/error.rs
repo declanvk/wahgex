@@ -9,9 +9,9 @@ pub struct BuildError {
 }
 
 impl BuildError {
-    pub(crate) fn unsupported(feature: &'static str) -> Self {
+    pub(crate) fn unsupported(feature: impl Into<String>) -> Self {
         Self {
-            kind: Box::new(BuildErrorKind::Unsupported(feature)),
+            kind: Box::new(BuildErrorKind::Unsupported(feature.into())),
         }
     }
 
@@ -73,5 +73,5 @@ enum BuildErrorKind {
     Layout(LayoutError),
     NFABuild(regex_automata::nfa::thompson::BuildError),
     LookaroundUnicode(regex_automata::util::look::UnicodeWordBoundaryError),
-    Unsupported(&'static str),
+    Unsupported(String),
 }

@@ -25,7 +25,7 @@ use wasm_encoder::{BlockType, MemArg, NameMap, ValType};
 use crate::util::repeat;
 
 use super::{
-    context::{Function, FunctionIdx},
+    context::{Function, FunctionDefinition, FunctionIdx, FunctionSignature},
     CompileContext, STATE_ID_LAYOUT,
 };
 
@@ -103,9 +103,9 @@ impl SparseSetFunctions {
     /// Register all the sparse set functions and save their
     /// [`FunctionIdx`]s.
     pub fn new(ctx: &mut CompileContext, layout: &SparseSetLayout) -> Self {
-        let init = ctx.sections.add_function(Self::init_fn(layout));
-        let contains = ctx.sections.add_function(Self::contains_fn(layout));
-        let insert = ctx.sections.add_function(Self::insert_fn(layout, contains));
+        let init = ctx.add_function(Self::init_fn(layout));
+        let contains = ctx.add_function(Self::contains_fn(layout));
+        let insert = ctx.add_function(Self::insert_fn(layout, contains));
 
         Self {
             init,
@@ -145,14 +145,18 @@ impl SparseSetFunctions {
             .end();
 
         Function {
-            name: "sparse_set_init".into(),
-            params_ty: &[ValType::I64],
-            results_ty: &[],
-            export: false,
-            body,
-            locals_name_map,
-            labels_name_map: None,
-            branch_hints: None,
+            sig: FunctionSignature {
+                name: "sparse_set_init".into(),
+                params_ty: &[ValType::I64],
+                results_ty: &[],
+                export: false,
+            },
+            def: FunctionDefinition {
+                body,
+                locals_name_map,
+                labels_name_map: None,
+                branch_hints: None,
+            },
         }
     }
 
@@ -212,14 +216,18 @@ impl SparseSetFunctions {
             .end();
 
         Function {
-            name: "sparse_set_contains".into(),
-            params_ty: &[ValType::I64, ValType::I32, ValType::I32],
-            results_ty: &[ValType::I32],
-            export: false,
-            body,
-            locals_name_map,
-            labels_name_map: None,
-            branch_hints: None,
+            sig: FunctionSignature {
+                name: "sparse_set_contains".into(),
+                params_ty: &[ValType::I64, ValType::I32, ValType::I32],
+                results_ty: &[ValType::I32],
+                export: false,
+            },
+            def: FunctionDefinition {
+                body,
+                locals_name_map,
+                labels_name_map: None,
+                branch_hints: None,
+            },
         }
     }
 
@@ -287,16 +295,20 @@ impl SparseSetFunctions {
             .end();
 
         Function {
-            name: "sparse_set_insert".into(),
-            // [set_len, state_id, set_ptr]
-            params_ty: &[ValType::I32, ValType::I32, ValType::I64],
-            // [new_set_len]
-            results_ty: &[ValType::I32],
-            export: false,
-            body,
-            locals_name_map,
-            labels_name_map: None,
-            branch_hints: None,
+            sig: FunctionSignature {
+                name: "sparse_set_insert".into(),
+                // [set_len, state_id, set_ptr]
+                params_ty: &[ValType::I32, ValType::I32, ValType::I64],
+                // [new_set_len]
+                results_ty: &[ValType::I32],
+                export: false,
+            },
+            def: FunctionDefinition {
+                body,
+                locals_name_map,
+                labels_name_map: None,
+                branch_hints: None,
+            },
         }
     }
 }
@@ -317,13 +329,7 @@ pub mod tests {
                 .export_state(true),
         );
 
-        ctx.sections
-            .add_function(SparseSetFunctions::init_fn(layout));
-        let contains = ctx
-            .sections
-            .add_function(SparseSetFunctions::contains_fn(layout));
-        ctx.sections
-            .add_function(SparseSetFunctions::insert_fn(layout, contains));
+        let _funcs = SparseSetFunctions::new(&mut ctx, layout);
 
         let module = ctx.compile(&layout.set_overall);
         module.finish()

@@ -4,14 +4,17 @@
 use wasm_encoder::{BlockType, NameMap, ValType};
 
 use super::{
-    context::{BlockSignature, CompileContext, Function, FunctionIdx, TypeIdx},
+    context::{
+        BlockSignature, CompileContext, Function, FunctionDefinition, FunctionIdx,
+        FunctionSignature, TypeIdx,
+    },
     input::{InputFunctions, InputLayout},
     state::{StateFunctions, StateLayout},
 };
 
 #[derive(Debug)]
 pub struct MatchingFunctions {
-    is_match: FunctionIdx,
+    _is_match: FunctionIdx,
 }
 
 impl MatchingFunctions {
@@ -22,19 +25,19 @@ impl MatchingFunctions {
         input_layout: &InputLayout,
         input_funcs: &InputFunctions,
     ) -> Self {
-        let start_config_is_some_block_sig = ctx.sections.add_block_signature(BlockSignature {
+        let start_config_is_some_block_sig = ctx.add_block_signature(BlockSignature {
             name: "start_config_is_some",
             params_ty: &[ValType::I32, ValType::I32],
             results_ty: &[ValType::I32, ValType::I32],
         });
 
-        let is_match_block_sig = ctx.sections.add_block_signature(BlockSignature {
+        let is_match_block_sig = ctx.add_block_signature(BlockSignature {
             name: "make_current_transitions_is_match",
             params_ty: &[ValType::I32],
             results_ty: &[],
         });
 
-        let is_match = ctx.sections.add_function(Self::is_match_fn(
+        let is_match = ctx.add_function(Self::is_match_fn(
             state_layout,
             state_funcs,
             input_layout,
@@ -43,7 +46,9 @@ impl MatchingFunctions {
             is_match_block_sig,
         ));
 
-        Self { is_match }
+        Self {
+            _is_match: is_match,
+        }
     }
 
     fn is_match_fn(
@@ -274,22 +279,26 @@ impl MatchingFunctions {
             .end();
 
         Function {
-            name: "is_match".into(),
-            // [anchored, anchored_pattern, span_start, span_end, haystack_len]
-            params_ty: &[
-                ValType::I32,
-                ValType::I32,
-                ValType::I64,
-                ValType::I64,
-                ValType::I64,
-            ],
-            // [is_match]
-            results_ty: &[ValType::I32],
-            export: true,
-            body,
-            locals_name_map,
-            labels_name_map: Some(labels_name_map),
-            branch_hints: None,
+            sig: FunctionSignature {
+                name: "is_match".into(),
+                // [anchored, anchored_pattern, span_start, span_end, haystack_len]
+                params_ty: &[
+                    ValType::I32,
+                    ValType::I32,
+                    ValType::I64,
+                    ValType::I64,
+                    ValType::I64,
+                ],
+                // [is_match]
+                results_ty: &[ValType::I32],
+                export: true,
+            },
+            def: FunctionDefinition {
+                body,
+                locals_name_map,
+                labels_name_map: Some(labels_name_map),
+                branch_hints: None,
+            },
         }
     }
 }
