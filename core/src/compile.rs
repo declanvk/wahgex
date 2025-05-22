@@ -168,4 +168,11 @@ mod tests {
         let pretty = wasm_print_module(&compiled);
         insta::assert_snapshot!(pretty);
     }
+
+    #[test]
+    fn lookaround_is_ascii_start_end() {
+        let compiled = compile(r"(?-u:\b{start}hello\b{end})").unwrap();
+        let pretty = wasm_print_module(&compiled);
+        insta::assert_snapshot!(pretty);
+    }
 }

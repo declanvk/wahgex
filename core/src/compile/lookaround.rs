@@ -7,7 +7,7 @@ use regex_automata::{
     nfa::thompson::NFA,
     util::look::{Look, LookMatcher, LookSet},
 };
-use wasm_encoder::{BlockType, MemArg, NameMap, ValType};
+use wasm_encoder::{BlockType, InstructionSink, MemArg, NameMap, ValType};
 
 use crate::util::repeat;
 
@@ -90,6 +90,7 @@ impl LookLayout {
     }
 }
 
+/// TODO: Write docs for this item
 #[derive(Debug)]
 pub struct LookFunctions {
     look_matches: [Option<FunctionIdx>; Self::NUM_LOOKS],
@@ -98,7 +99,7 @@ pub struct LookFunctions {
 impl LookFunctions {
     const NUM_LOOKS: usize = const { (Look::WordEndHalfUnicode as usize).ilog2() as usize };
 
-    /// TODO: Write docs for item
+    /// TODO: Write docs for this item
     pub fn new(ctx: &mut CompileContext, layout: &LookLayout) -> Result<Self, BuildError> {
         let mut look_matches = [None; Self::NUM_LOOKS];
         let look_set = modified_lookset_for_dependencies(&ctx.nfa);
@@ -116,7 +117,7 @@ impl LookFunctions {
                 )));
             }
 
-            let sig = Self::lookaround_fn_signature(Self::lookaround_fn_name(look));
+            let sig = lookaround_fn_signature(lookaround_fn_name(look));
 
             let func = ctx.declare_function(sig);
             look_matches[look.as_repr().ilog2() as usize] = Some(func);
@@ -145,6 +146,19 @@ impl LookFunctions {
                         // See dependency in `modified_lookset_for_dependencies`
                         .expect("should have generated `look_is_word_ascii` function"),
                 ),
+                Look::WordStartAscii => Self::is_word_start_ascii_fn(
+                    layout
+                        .is_word_byte_table
+                        .as_ref()
+                        .expect("should have generated table"),
+                ),
+                Look::WordEndAscii => Self::is_word_end_ascii_fn(
+                    layout
+                        .is_word_byte_table
+                        .as_ref()
+                        .expect("should have generated table"),
+                ),
+
                 _ => unreachable!("Should be unreachable due to first loop through lookset"),
             };
 
@@ -515,77 +529,19 @@ impl LookFunctions {
 
         // Sketch:
         // ```rust
-        // let word_before;
-        // if at_offset == 0 {
-        //    word_before = false;
-        // } else {
-        //    word_before = is_word_byte_table[haystack_ptr[at_offset - 1]];
-        // }
-        // let word_after;
-        // if at_offset >= haystack_len {
-        //    word_after = false;
-        // } else {
-        //    word_after = is_word_byte_table[haystack_ptr[at_offset]];
-        // }
+        // ...
         // return word_before != word_after;
         // ```
 
         let mut body = wasm_encoder::Function::new([(2, ValType::I32)]);
 
-        body.instructions()
-            // let word_before;
-            // if at_offset == 0 {
-            .local_get(2)
-            .i64_eqz()
-            .if_(BlockType::Empty)
-            .i32_const(false as i32)
-            .local_set(3)
-            .else_()
-            // word_before = is_word_byte_table[haystack_ptr[at_offset - 1]];
-            .local_get(2)
-            .i64_const(1)
-            .i64_sub()
-            .local_get(0)
-            .i64_add()
-            .i32_load8_u(MemArg {
-                offset: 0,
-                align: 0,        // byte alignement
-                memory_index: 0, // haystack
-            })
-            .i64_extend_i32_u()
-            .i32_load8_u(MemArg {
-                offset: is_word_byte_table.position,
-                align: 0, // byte alignment
-                memory_index: 1,
-            })
-            .local_set(3)
-            .end()
-            // let word_after;
-            // if at_offset >= haystack_len {
-            .local_get(2)
-            .local_get(1)
-            .i64_ge_u()
-            .if_(BlockType::Empty)
-            .i32_const(false as i32)
+        let mut instructions = body.instructions();
+        Self::word_before_ascii_instructions(&mut instructions, is_word_byte_table);
+        instructions.local_set(3);
+
+        Self::word_after_ascii_instructions(&mut instructions, is_word_byte_table);
+        instructions
             .local_set(4)
-            .else_()
-            // word_after = is_word_byte_table[haystack_ptr[at_offset]];
-            .local_get(2)
-            .local_get(0)
-            .i64_add()
-            .i32_load8_u(MemArg {
-                offset: 0,
-                align: 0,        // byte alignment
-                memory_index: 0, // haystack
-            })
-            .i64_extend_i32_u()
-            .i32_load8_u(MemArg {
-                offset: is_word_byte_table.position,
-                align: 0, // byte alignment
-                memory_index: 1,
-            })
-            .local_set(4)
-            .end()
             // return word_before != word_after;
             .local_get(3)
             .local_get(4)
@@ -630,55 +586,209 @@ impl LookFunctions {
         }
     }
 
-    fn lookaround_fn_signature(name: &str) -> FunctionSignature {
-        FunctionSignature {
-            name: name.into(),
-            // [haystack_ptr, haystack_len, at_offset]
-            params_ty: &[ValType::I64, ValType::I64, ValType::I64],
-            // [is_match]
-            results_ty: &[ValType::I32],
-            export: false,
+    fn is_word_start_ascii_fn(is_word_byte_table: &IsWordByteTable) -> FunctionDefinition {
+        let mut locals_name_map = NameMap::new();
+        // Parameters
+        locals_name_map.append(0, "haystack_ptr");
+        locals_name_map.append(1, "haystack_len");
+        locals_name_map.append(2, "at_offset");
+
+        // Sketch:
+        // ```rust
+        // ...
+        // return !word_before && word_after;
+        // ```
+
+        let mut body = wasm_encoder::Function::new([(2, ValType::I32)]);
+
+        let mut instructions = body.instructions();
+        Self::word_before_ascii_instructions(&mut instructions, is_word_byte_table);
+        instructions.local_set(3);
+
+        Self::word_after_ascii_instructions(&mut instructions, is_word_byte_table);
+        instructions
+            .local_set(4)
+            // return !word_before && word_after;
+            .local_get(3)
+            .i32_const(1)
+            .i32_xor()
+            .local_get(4)
+            .i32_and()
+            .end();
+
+        FunctionDefinition {
+            body,
+            locals_name_map,
+            labels_name_map: None,
+            branch_hints: None,
         }
     }
 
-    fn lookaround_fn_name(look: Look) -> &'static str {
-        match look {
-            Look::Start => "look_is_start",
-            Look::End => "look_is_end",
-            Look::StartLF => "look_is_start_lf",
-            Look::EndLF => "look_is_end_lf",
-            Look::StartCRLF => "look_is_start_crlf",
-            Look::EndCRLF => "look_is_end_crlf",
-            Look::WordAscii => "look_is_word_ascii",
-            Look::WordAsciiNegate => "look_is_word_ascii_negate",
-            Look::WordUnicode => "look_is_word_unicode",
-            Look::WordUnicodeNegate => "look_is_word_unicode_negate",
-            Look::WordStartAscii => "look_is_word_start_ascii",
-            Look::WordEndAscii => "look_is_word_end_ascii",
-            Look::WordStartUnicode => "look_is_word_start_unicode",
-            Look::WordEndUnicode => "look_is_word_end_unicode",
-            Look::WordStartHalfAscii => "look_is_word_start_half_ascii",
-            Look::WordEndHalfAscii => "look_is_word_end_half_ascii",
-            Look::WordStartHalfUnicode => "look_is_word_start_half_unicode",
-            Look::WordEndHalfUnicode => "look_is_word_end_half_unicode",
+    fn is_word_end_ascii_fn(is_word_byte_table: &IsWordByteTable) -> FunctionDefinition {
+        let mut locals_name_map = NameMap::new();
+        // Parameters
+        locals_name_map.append(0, "haystack_ptr");
+        locals_name_map.append(1, "haystack_len");
+        locals_name_map.append(2, "at_offset");
+
+        // Sketch:
+        // ```rust
+        // ...
+        // return word_before && !word_after;
+        // ```
+
+        let mut body = wasm_encoder::Function::new([(2, ValType::I32)]);
+
+        let mut instructions = body.instructions();
+        Self::word_before_ascii_instructions(&mut instructions, is_word_byte_table);
+        instructions.local_set(3);
+
+        Self::word_after_ascii_instructions(&mut instructions, is_word_byte_table);
+        instructions
+            .local_set(4)
+            // return word_before && !word_after;
+            .local_get(3)
+            .local_get(4)
+            .i32_const(1)
+            .i32_xor()
+            .i32_and()
+            .end();
+
+        FunctionDefinition {
+            body,
+            locals_name_map,
+            labels_name_map: None,
+            branch_hints: None,
         }
+    }
+
+    fn word_before_ascii_instructions(
+        instructions: &mut InstructionSink,
+        is_word_byte_table: &IsWordByteTable,
+    ) {
+        // Sketch:
+        // ```rust
+        // if at_offset == 0 {
+        //    false
+        // } else {
+        //    is_word_byte_table[haystack_ptr[at_offset - 1]]
+        // }
+        // ```
+
+        instructions
+            // if at_offset == 0 {
+            .local_get(2)
+            .i64_eqz()
+            .if_(BlockType::Result(ValType::I32))
+            .i32_const(false as i32)
+            .else_()
+            // word_before = is_word_byte_table[haystack_ptr[at_offset - 1]];
+            .local_get(2)
+            .i64_const(1)
+            .i64_sub()
+            .local_get(0)
+            .i64_add()
+            .i32_load8_u(MemArg {
+                offset: 0,
+                align: 0,        // byte alignement
+                memory_index: 0, // haystack
+            })
+            .i64_extend_i32_u()
+            .i32_load8_u(MemArg {
+                offset: is_word_byte_table.position,
+                align: 0, // byte alignment
+                memory_index: 1,
+            })
+            .end();
+    }
+
+    fn word_after_ascii_instructions(
+        instructions: &mut InstructionSink,
+        is_word_byte_table: &IsWordByteTable,
+    ) {
+        // Sketch:
+        // ```rust
+        // if at_offset >= haystack_len {
+        //    false
+        // } else {
+        //    is_word_byte_table[haystack_ptr[at_offset]]
+        // }
+        // ```
+
+        instructions
+            // let word_after;
+            // if at_offset >= haystack_len {
+            .local_get(2)
+            .local_get(1)
+            .i64_ge_u()
+            .if_(BlockType::Result(ValType::I32))
+            .i32_const(false as i32)
+            .else_()
+            // word_after = is_word_byte_table[haystack_ptr[at_offset]];
+            .local_get(2)
+            .local_get(0)
+            .i64_add()
+            .i32_load8_u(MemArg {
+                offset: 0,
+                align: 0,        // byte alignment
+                memory_index: 0, // haystack
+            })
+            .i64_extend_i32_u()
+            .i32_load8_u(MemArg {
+                offset: is_word_byte_table.position,
+                align: 0, // byte alignment
+                memory_index: 1,
+            })
+            .end();
+    }
+}
+
+fn lookaround_fn_signature(name: &str) -> FunctionSignature {
+    FunctionSignature {
+        name: name.into(),
+        // [haystack_ptr, haystack_len, at_offset]
+        params_ty: &[ValType::I64, ValType::I64, ValType::I64],
+        // [is_match]
+        results_ty: &[ValType::I32],
+        export: false,
+    }
+}
+
+fn lookaround_fn_name(look: Look) -> &'static str {
+    match look {
+        Look::Start => "look_is_start",
+        Look::End => "look_is_end",
+        Look::StartLF => "look_is_start_lf",
+        Look::EndLF => "look_is_end_lf",
+        Look::StartCRLF => "look_is_start_crlf",
+        Look::EndCRLF => "look_is_end_crlf",
+        Look::WordAscii => "look_is_word_ascii",
+        Look::WordAsciiNegate => "look_is_word_ascii_negate",
+        Look::WordUnicode => "look_is_word_unicode",
+        Look::WordUnicodeNegate => "look_is_word_unicode_negate",
+        Look::WordStartAscii => "look_is_word_start_ascii",
+        Look::WordEndAscii => "look_is_word_end_ascii",
+        Look::WordStartUnicode => "look_is_word_start_unicode",
+        Look::WordEndUnicode => "look_is_word_end_unicode",
+        Look::WordStartHalfAscii => "look_is_word_start_half_ascii",
+        Look::WordEndHalfAscii => "look_is_word_end_half_ascii",
+        Look::WordStartHalfUnicode => "look_is_word_start_half_unicode",
+        Look::WordEndHalfUnicode => "look_is_word_end_half_unicode",
     }
 }
 
 fn is_unsupported_lookaround(look: Look) -> bool {
-    match look {
+    matches!(
+        look,
         Look::WordUnicode
-        | Look::WordUnicodeNegate
-        | Look::WordStartAscii
-        | Look::WordEndAscii
-        | Look::WordStartUnicode
-        | Look::WordEndUnicode
-        | Look::WordStartHalfAscii
-        | Look::WordEndHalfAscii
-        | Look::WordStartHalfUnicode
-        | Look::WordEndHalfUnicode => true,
-        _ => false,
-    }
+            | Look::WordUnicodeNegate
+            | Look::WordStartUnicode
+            | Look::WordEndUnicode
+            | Look::WordStartHalfAscii
+            | Look::WordEndHalfAscii
+            | Look::WordStartHalfUnicode
+            | Look::WordEndHalfUnicode
+    )
 }
 
 fn needs_is_word_byte_lut(look_set: LookSet) -> bool {
