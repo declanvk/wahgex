@@ -3,6 +3,7 @@
 
 use std::{alloc::Layout, collections::BTreeMap};
 
+use regex_automata::nfa::thompson::NFA;
 use wasm_encoder::{
     BranchHint, BranchHints, CodeSection, ConstExpr, DataSection, ExportKind, ExportSection,
     FunctionSection, ImportSection, IndirectNameMap, MemorySection, MemoryType, Module, NameMap,
@@ -12,10 +13,12 @@ use wasm_encoder::{
 /// This struct contains all the input and intermediate state needed to compile
 /// the WASM module.
 #[derive(Debug)]
+#[non_exhaustive]
 pub struct CompileContext {
-    pub nfa: regex_automata::nfa::thompson::NFA,
+    pub nfa: NFA,
     pub config: crate::Config,
     pub sections: Sections,
+    state_id_layout: Layout,
 }
 
 /// Contains the various sections of a WASM module being built.
@@ -59,11 +62,14 @@ impl Sections {
 
 impl CompileContext {
     /// Creates a new `CompileContext` with the given NFA and configuration.
-    pub fn new(nfa: regex_automata::nfa::thompson::NFA, config: crate::Config) -> Self {
+    pub fn new(nfa: NFA, config: crate::Config) -> Self {
+        let state_id_layout = Self::compute_state_id_layout(&nfa);
+
         Self {
             nfa,
             config,
             sections: Sections::default(),
+            state_id_layout,
         }
     }
 
@@ -148,6 +154,26 @@ impl CompileContext {
             .type_names
             .append(block_ty_idx, &signature.type_name());
         TypeIdx(block_ty_idx)
+    }
+
+    /// Return the minimal layout for a state ID for the current NFA.
+    ///
+    /// This function will minimize the size of the state ID layout based on the
+    /// number of states in the current NFA.
+    pub fn state_id_layout(&self) -> &Layout {
+        &self.state_id_layout
+    }
+
+    fn compute_state_id_layout(nfa: &NFA) -> Layout {
+        let num_states = nfa.states().len();
+
+        if num_states <= u8::MAX as usize {
+            Layout::from_size_align(1, 1).unwrap()
+        } else if num_states <= u16::MAX as usize {
+            Layout::from_size_align(2, 2).unwrap()
+        } else {
+            Layout::from_size_align(4, 4).unwrap()
+        }
     }
 }
 

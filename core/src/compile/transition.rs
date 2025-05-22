@@ -21,7 +21,8 @@ use super::{
         FunctionSignature, TypeIdx,
     },
     epsilon_closure::EpsilonClosureFunctions,
-    CompileContext, STATE_ID_LAYOUT,
+    instructions::InstructionSinkExt,
+    CompileContext,
 };
 
 const SPARSE_RANGE_LOOKUP_TABLE_ELEM: Layout = const {
@@ -97,6 +98,7 @@ impl TransitionLayout {
         let mut lookup_table_offsets = HashMap::new();
 
         let states = ctx.nfa.states();
+        let state_id_layout = *ctx.state_id_layout();
         for for_sid in (0..states.len()).map(StateID::new).map(Result::unwrap) {
             let state = &states[for_sid.as_usize()];
             match state {
@@ -104,7 +106,8 @@ impl TransitionLayout {
                     // no lookup table
                 },
                 State::Sparse(SparseTransitions { transitions }) => {
-                    let (range_data, state_data) = flatten_sparse_transition(transitions);
+                    let (range_data, state_data) =
+                        flatten_sparse_transition(transitions, &state_id_layout);
 
                     // (start, end) tuples arranged together
                     let (range_lookup_table, range_lookup_table_stride) =
@@ -120,7 +123,7 @@ impl TransitionLayout {
 
                     // state IDs all packed together
                     let (state_id_table, state_id_table_stride) =
-                        repeat(&STATE_ID_LAYOUT, transitions.len())?;
+                        repeat(&state_id_layout, transitions.len())?;
                     let (new_overall, state_id_table_pos) = overall.extend(state_id_table)?;
                     overall = new_overall;
 
@@ -142,7 +145,7 @@ impl TransitionLayout {
                     );
                 },
                 State::Dense(DenseTransitions { transitions }) => {
-                    let (lookup_table_layout, table_stride) = repeat(&STATE_ID_LAYOUT, 256)?;
+                    let (lookup_table_layout, table_stride) = repeat(&state_id_layout, 256)?;
                     let (new_overall, table_pos) = overall.extend(lookup_table_layout)?;
                     overall = new_overall;
                     lookup_table_offsets.insert(
@@ -156,7 +159,7 @@ impl TransitionLayout {
                     ctx.sections.add_active_data_segment(ActiveDataSegment {
                         name: format!("dense_table_{}", for_sid.as_u32()),
                         position: table_pos,
-                        data: flatten_dense_transition(transitions),
+                        data: flatten_dense_transition(transitions, &state_id_layout),
                     });
                 },
                 _ => {
@@ -178,7 +181,10 @@ impl TransitionLayout {
     }
 }
 
-fn flatten_sparse_transition(sparse: &[Transition]) -> (Vec<u8>, Vec<u8>) {
+fn flatten_sparse_transition(
+    sparse: &[Transition],
+    state_id_layout: &Layout,
+) -> (Vec<u8>, Vec<u8>) {
     let mut range_output = Vec::with_capacity(mem::size_of::<u8>() * sparse.len() * 2);
 
     for transition in sparse {
@@ -186,22 +192,21 @@ fn flatten_sparse_transition(sparse: &[Transition]) -> (Vec<u8>, Vec<u8>) {
         range_output.push(transition.end);
     }
 
-    // TODO(opt): state ID size may become variable
-    let mut state_output = Vec::with_capacity(STATE_ID_LAYOUT.size() * sparse.len());
+    let mut state_output = Vec::with_capacity(state_id_layout.size() * sparse.len());
 
     for transition in sparse {
         // WASM assumes little endian byte ordering: https://webassembly.org/docs/portability/
-        state_output.extend_from_slice(&transition.next.as_u32().to_le_bytes());
+        let bytes = transition.next.as_u32().to_le_bytes();
+        state_output.extend_from_slice(&bytes[..state_id_layout.size()]);
     }
 
     (range_output, state_output)
 }
 
-fn flatten_dense_transition(dense: &[StateID]) -> Vec<u8> {
+fn flatten_dense_transition(dense: &[StateID], state_id_layout: &Layout) -> Vec<u8> {
     assert_eq!(dense.len(), 256);
 
-    // TODO(opt): state ID size may become variable
-    let mut output = Vec::with_capacity(STATE_ID_LAYOUT.size() * dense.len());
+    let mut output = Vec::with_capacity(state_id_layout.size() * dense.len());
 
     for state_id in dense {
         // WASM assumes little endian byte ordering: https://webassembly.org/docs/portability/
@@ -246,6 +251,7 @@ impl TransitionFunctions {
                 ctx.nfa.states(),
                 epsilon_closures.branch_to_epsilon_closure,
                 transition_layout.get(for_sid),
+                ctx.state_id_layout(),
             );
             let transition_idx = ctx.add_function(transition_fn);
             state_transitions.insert(for_sid, transition_idx);
@@ -263,6 +269,7 @@ impl TransitionFunctions {
         let make_current_transitions = ctx.add_function(Self::make_current_transitions_fn(
             branch_to_transition,
             branch_to_transition_is_match_block_sig,
+            ctx.state_id_layout(),
         ));
 
         Self {
@@ -275,6 +282,7 @@ impl TransitionFunctions {
     fn make_current_transitions_fn(
         branch_to_transition: FunctionIdx,
         branch_to_transition_is_match_block_sig: TypeIdx,
+        state_id_layout: &Layout,
     ) -> Function {
         let mut locals_name_map = NameMap::new();
         // Parameters
@@ -342,18 +350,14 @@ impl TransitionFunctions {
             .local_get(7)
             .i64_extend_i32_u()
             .i64_const(i64::from_ne_bytes(
-                u64::try_from(STATE_ID_LAYOUT.align())
+                u64::try_from(state_id_layout.align())
                     .unwrap()
                     .to_ne_bytes(),
             ))
             .i64_mul()
             .local_get(3)
             .i64_add()
-            .i32_load(MemArg {
-                offset: 0,
-                align: STATE_ID_LAYOUT.align().ilog2(),
-                memory_index: 1,
-            })
+            .state_id_load(0, state_id_layout)
             .local_set(8)
             // is_match, new_next_set_len = branch_to_transition(..)
             .local_get(0)
@@ -483,6 +487,7 @@ impl TransitionFunctions {
         states: &[State],
         branch_to_epsilon_closure: FunctionIdx,
         lookup_table: Option<LookupTable>,
+        state_id_layout: &Layout,
     ) -> Function {
         let mut locals_name_map = NameMap::new();
         // Parameters
@@ -563,7 +568,12 @@ impl TransitionFunctions {
                 // lookup tables
                 let sparse_table = lookup_table.unwrap().unwrap_sparse();
                 Self::non_terminal_transition_prefix(&mut instructions);
-                Self::sparse_transition_body(&mut instructions, sparse_table, &mut labels_name_map);
+                Self::sparse_transition_body(
+                    &mut instructions,
+                    sparse_table,
+                    &mut labels_name_map,
+                    state_id_layout,
+                );
                 Self::non_terminal_transition_suffix(&mut instructions, branch_to_epsilon_closure);
             },
             State::Dense(_) => {
@@ -571,7 +581,7 @@ impl TransitionFunctions {
                 // lookup tables
                 let dense_table = lookup_table.unwrap().unwrap_dense();
                 Self::non_terminal_transition_prefix(&mut instructions);
-                Self::dense_transition_body(&mut instructions, dense_table);
+                Self::dense_transition_body(&mut instructions, dense_table, state_id_layout);
                 Self::non_terminal_transition_suffix(&mut instructions, branch_to_epsilon_closure);
             },
             State::Match { .. } => {
@@ -675,6 +685,7 @@ impl TransitionFunctions {
         instructions: &mut InstructionSink<'_>,
         sparse_table: SparseTable,
         labels_name_map: &mut NameMap,
+        state_id_layout: &Layout,
     ) {
         // Range table is laid out as `[(start: u8, end: u8), ...]`
         // Need to iterate and find the index where the `start` <= byte && byte
@@ -782,11 +793,7 @@ impl TransitionFunctions {
                     .to_ne_bytes(),
             ))
             .i64_mul()
-            .i32_load(MemArg {
-                offset: u64::try_from(sparse_table.state_id_table_pos).unwrap(),
-                align: STATE_ID_LAYOUT.align().ilog2(),
-                memory_index: 1,
-            })
+            .state_id_load(u64::try_from(sparse_table.state_id_table_pos).unwrap(),  state_id_layout)
             .local_set(6) // next_state
             // break;
             // jump to the end of the block outside of loop
@@ -804,7 +811,11 @@ impl TransitionFunctions {
             .end(); // end block
     }
 
-    fn dense_transition_body(instructions: &mut InstructionSink<'_>, table: DenseTable) {
+    fn dense_transition_body(
+        instructions: &mut InstructionSink<'_>,
+        table: DenseTable,
+        state_id_layout: &Layout,
+    ) {
         // Dense transition table is laid out as a 256-length array of state
         // IDs. To lookup the next state, just use the byte as an index. If the
         // state is non-zero, then the transition is present.
@@ -816,11 +827,7 @@ impl TransitionFunctions {
                 u64::try_from(table.table_stride).unwrap().to_ne_bytes(),
             ))
             .i64_mul() // offset in table
-            .i32_load(MemArg {
-                offset: u64::try_from(table.table_pos).unwrap(),
-                align: STATE_ID_LAYOUT.align().ilog2(),
-                memory_index: 1,
-            })
+            .state_id_load(u64::try_from(table.table_pos).unwrap(), state_id_layout)
             .local_tee(6) // next_state
             // if next == StateID::ZERO
             .i32_eqz()
@@ -872,13 +879,16 @@ mod tests {
     fn branch_to_transition_test_closure(
         nfa: NFA,
         haystack: &[u8],
-    ) -> impl FnMut(i32, usize, &[i32], bool) + '_ {
+    ) -> impl FnMut(i32, usize, &[u8], bool) + '_ {
         let mut ctx = CompileContext::new(
             nfa,
             crate::Config::new()
                 .export_all_functions(true)
                 .export_state(true),
         );
+
+        // We're going to assume all states use less then u8::MAX states
+        assert_eq!(*ctx.state_id_layout(), Layout::new::<u8>());
 
         let overall = Layout::new::<()>();
         let (overall, sparse_set_layout) = SparseSetLayout::new(&mut ctx, overall).unwrap();
@@ -910,7 +920,7 @@ mod tests {
 
         move |state_id: i32,
               at_offset: usize,
-              expected_next_states: &[i32],
+              expected_next_states: &[u8],
               expected_is_match: bool| {
             let haystack_ptr = 0;
             let haystack_len = haystack.len() as i64;
@@ -939,7 +949,7 @@ mod tests {
                 byte as char
             );
 
-            let states = &unsafe { state_memory.data(&store).align_to::<i32>().1 }
+            let states = &unsafe { state_memory.data(&store).align_to::<u8>().1 }
                 [0..usize::try_from(new_set_len).unwrap()];
             assert_eq!(
                 states, expected_next_states,
@@ -1026,18 +1036,18 @@ mod tests {
         let mut test = branch_to_transition_test_closure(nfa, b"acbcdceg");
 
         // State 0: binary-union(2, 1)
-        for byte in [0, 2, 4, 6, 7] {
-            test(0, byte, &[], false);
+        for offset in [0, 2, 4, 6, 7] {
+            test(0, offset, &[], false);
         }
 
         // State 1: \x00-\xFF => 0
-        for byte in [0, 2, 4, 6, 7] {
-            test(1, byte, &[0, 1, 2, 6], false);
+        for offset in [0, 2, 4, 6, 7] {
+            test(1, offset, &[0, 1, 2, 6], false);
         }
 
         // State 2: capture(pid=0, group=0, slot=0) => 8
-        for byte in [0, 2, 4, 6, 7] {
-            test(2, byte, &[], false);
+        for offset in [0, 2, 4, 6, 7] {
+            test(2, offset, &[], false);
         }
 
         for state in [3, 4, 5] {
@@ -1055,13 +1065,13 @@ mod tests {
         test(6, 7, &[7, 8], false);
 
         // State 7: capture(pid=0, group=0, slot=1) => 8
-        for byte in [0, 2, 4, 6, 7] {
-            test(7, byte, &[], false);
+        for offset in [0, 2, 4, 6, 7] {
+            test(7, offset, &[], false);
         }
 
         // State 8: MATCH(0)
-        for byte in [0, 2, 4, 6, 7] {
-            test(8, byte, &[], true);
+        for offset in [0, 2, 4, 6, 7] {
+            test(8, offset, &[], true);
         }
     }
 
@@ -1107,13 +1117,16 @@ mod tests {
 
     fn make_current_transitions_test_closure(
         nfa: NFA,
-    ) -> impl FnMut(&[i32], u8, Option<&[i32]>, bool) {
+    ) -> impl FnMut(&[i32], u8, Option<&[u8]>, bool) {
         let mut ctx = CompileContext::new(
             nfa,
             crate::Config::new()
                 .export_all_functions(true)
                 .export_state(true),
         );
+
+        // Assume all tests use less than 255 states
+        assert_eq!(ctx.state_id_layout(), &Layout::new::<u8>());
 
         let overall = Layout::new::<()>();
 
@@ -1151,7 +1164,7 @@ mod tests {
 
         move |current_states: &[i32],
               byte: u8,
-              expected_next_states: Option<&[i32]>,
+              expected_next_states: Option<&[u8]>,
               expected_is_match: bool| {
             let haystack_ptr = 0;
             let haystack_len = 1;
@@ -1201,7 +1214,7 @@ mod tests {
                 let states = &unsafe {
                     state_memory.data(&store)[next_set_layout.set_start_pos
                         ..(next_set_layout.set_start_pos + next_set_layout.set_overall.size())]
-                        .align_to::<i32>()
+                        .align_to::<u8>()
                         .1
                 }[0..expected_next_states.len()];
                 assert_eq!(

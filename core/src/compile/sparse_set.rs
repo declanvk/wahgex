@@ -20,13 +20,14 @@ and based my implementation off the same file.
 
 use std::alloc::{Layout, LayoutError};
 
-use wasm_encoder::{BlockType, MemArg, NameMap, ValType};
+use wasm_encoder::{BlockType, NameMap, ValType};
 
 use crate::util::repeat;
 
 use super::{
     context::{Function, FunctionDefinition, FunctionIdx, FunctionSignature},
-    CompileContext, STATE_ID_LAYOUT,
+    instructions::InstructionSinkExt,
+    CompileContext,
 };
 
 /// This struct describes the layout of a "sparse set", which is used to
@@ -47,6 +48,8 @@ pub struct SparseSetLayout {
     pub set_overall: Layout,
     pub set_start_pos: usize,
     sparse_array_offset: usize,
+
+    state_id_layout: Layout,
 }
 
 impl SparseSetLayout {
@@ -56,23 +59,29 @@ impl SparseSetLayout {
     pub fn new(ctx: &mut CompileContext, overall: Layout) -> Result<(Layout, Self), LayoutError> {
         let num_states = ctx.nfa.states().len();
 
-        Self::with_num_states(num_states, overall)
+        Self::with_num_states(num_states, overall, ctx.state_id_layout())
     }
 
-    fn with_num_states(num_states: usize, overall: Layout) -> Result<(Layout, Self), LayoutError> {
+    fn with_num_states(
+        num_states: usize,
+        overall: Layout,
+        state_id_layout: &Layout,
+    ) -> Result<(Layout, Self), LayoutError> {
         // First field: `dense` - an array of length `num_state`, that contains the
         // state IDs in the order they were inserted
-        let (dense_layout, dense_stride) = repeat(&STATE_ID_LAYOUT, num_states)?;
+        let (dense_layout, dense_stride) = repeat(state_id_layout, num_states)?;
 
         // Second field: `sparse` - an array of length `num_state`, that contains the
         // state IDs in the order they were inserted
-        let (sparse_layout, sparse_stride) = repeat(&STATE_ID_LAYOUT, num_states)?;
+        let (sparse_layout, sparse_stride) = repeat(state_id_layout, num_states)?;
 
         let (set_overall, sparse_array_offset) = dense_layout.extend(sparse_layout)?;
         let (overall, set_start_pos) = overall.extend(set_overall)?;
 
         // The `len` field, which would normally be first, is going to be passed around
         // by function parameter
+
+        let state_id_layout = *state_id_layout;
 
         Ok((
             overall,
@@ -84,6 +93,7 @@ impl SparseSetLayout {
                 sparse_layout,
                 sparse_stride,
                 sparse_array_offset,
+                state_id_layout,
             },
         ))
     }
@@ -178,16 +188,15 @@ impl SparseSetFunctions {
             // let index = self.sparse[id];
             .local_get(2)
             .i64_extend_i32_u()
-            .i64_const(STATE_ID_LAYOUT.size().try_into().unwrap())
+            .i64_const(layout.state_id_layout.size().try_into().unwrap())
             .i64_mul() // need to scale the `state_id` index by the size of the elements of the array
             .local_get(0)
             .i64_add()
-            .i32_load(MemArg {
+            .state_id_load(
                 // sparse array is after dense
-                offset: layout.sparse_array_offset.try_into().unwrap(),
-                align: STATE_ID_LAYOUT.align().ilog2(),
-                memory_index: 1,
-            })
+                layout.sparse_array_offset.try_into().unwrap(),
+                &layout.state_id_layout,
+            )
             .local_tee(3)
             // index.as_usize() < self.len()
             .local_get(1)
@@ -201,16 +210,15 @@ impl SparseSetFunctions {
             // && self.dense[index] == id
             .local_get(3)
             .i64_extend_i32_u()
-            .i64_const(STATE_ID_LAYOUT.size().try_into().unwrap())
+            .i64_const(layout.state_id_layout.size().try_into().unwrap())
             .i64_mul() // need to scale the `state_id` index by the size of the elements of the array
             .local_get(0)
             .i64_add()
-            .i32_load(MemArg {
+            .state_id_load(
                 // dense array is at offset 0
-                offset: 0,
-                align: STATE_ID_LAYOUT.align().ilog2(),
-                memory_index: 1,
-            })
+                0,
+                &layout.state_id_layout,
+            )
             .local_get(2)
             .i32_eq()
             .end();
@@ -262,33 +270,29 @@ impl SparseSetFunctions {
             // self.dense[index] = id;
             .local_get(0) // set_len as index
             .i64_extend_i32_u()
-            .i64_const(STATE_ID_LAYOUT.size().try_into().unwrap())
+            .i64_const(layout.state_id_layout.size().try_into().unwrap())
             .i64_mul() // need to scale the `state_id` index by the size of the elements of the array
             .local_get(2) // set_ptr
             .i64_add()
             .local_get(1) // state_id
-            .i32_store(MemArg {
+            .state_id_store(
                 // dense is at offset 0
-                offset: 0,
-                align: Layout::new::<u32>().align().ilog2(),
-                memory_index: 1,
-            })
+                0,
+                &layout.state_id_layout,
+            )
             // self.sparse[id] = index;
             .local_get(1) // state_id
             .i64_extend_i32_u()
-            // TODO(opt): We can dynamically reduce the size of a state ID when the number of states
-            // is small. If it fits into a u8 or a u16, we can use those instead of u32.
-            .i64_const(STATE_ID_LAYOUT.size().try_into().unwrap())
+            .i64_const(layout.state_id_layout.size().try_into().unwrap())
             .i64_mul() // need to scale the `state_id` index by the size of the elements of the array
             .local_get(2) // set_ptr
             .i64_add()
             .local_get(0) // set_len as index
-            .i32_store(MemArg {
+            .state_id_store(
                 // sparse is after dense
-                offset: layout.sparse_array_offset.try_into().unwrap(),
-                align: Layout::new::<u32>().align().ilog2(),
-                memory_index: 1,
-            })
+                layout.sparse_array_offset.try_into().unwrap(),
+                &layout.state_id_layout,
+            )
             .local_get(0) // current set_len
             .i32_const(1)
             .i32_add()
@@ -362,9 +366,11 @@ pub mod tests {
     fn test_sparse_set_layout() {
         // Lets do a non-standard layout to start
         let overall = Layout::new::<u16>();
+        let state_id_layout = Layout::new::<u32>();
 
         // Layout one sparse array at offset 0 with 5 states capacity.
-        let (overall, sparse_set_layout) = SparseSetLayout::with_num_states(7, overall).unwrap();
+        let (overall, sparse_set_layout) =
+            SparseSetLayout::with_num_states(7, overall, &state_id_layout).unwrap();
 
         assert_eq!(overall, Layout::from_size_align(60, 4).unwrap());
 
@@ -390,8 +396,11 @@ pub mod tests {
     #[test]
     fn test_init_insert_contains() {
         let overall = Layout::new::<()>();
+        let state_id_layout = Layout::new::<u32>();
+
         // Layout one sparse array at offset 0 with 5 states capacity.
-        let (_overall, sparse_set_layout) = SparseSetLayout::with_num_states(5, overall).unwrap();
+        let (_overall, sparse_set_layout) =
+            SparseSetLayout::with_num_states(5, overall, &state_id_layout).unwrap();
         let module_bytes = compile_test_module(&sparse_set_layout);
         let (_engine, _module, mut store, instance) = setup_interpreter(module_bytes);
         let (init, contains, insert) = get_sparse_set_fns(&instance, &store);
@@ -443,7 +452,7 @@ pub mod tests {
 
         #[rustfmt::skip]
         assert_eq!(
-            &state_memory.data(&store)[..(STATE_ID_LAYOUT.size() * 5 * 2)],
+            &state_memory.data(&store)[..(state_id_layout.size() * 5 * 2)],
             &[
                 0, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0, 4, 0, 0, 0,
                 0, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0, 4, 0, 0, 0,
@@ -461,8 +470,11 @@ pub mod tests {
     #[test]
     fn test_init_insert_reverse_contains() {
         let overall = Layout::new::<()>();
+        let state_id_layout = Layout::new::<u32>();
+
         // Layout one sparse array at offset 0 with 5 states capacity.
-        let (_overall, sparse_set_layout) = SparseSetLayout::with_num_states(5, overall).unwrap();
+        let (_overall, sparse_set_layout) =
+            SparseSetLayout::with_num_states(5, overall, &state_id_layout).unwrap();
         let module_bytes = compile_test_module(&sparse_set_layout);
         let (_engine, _module, mut store, instance) = setup_interpreter(module_bytes);
         let (init, contains, insert) = get_sparse_set_fns(&instance, &store);
@@ -503,7 +515,7 @@ pub mod tests {
 
         #[rustfmt::skip]
         assert_eq!(
-            &state_memory.data(&store)[..(STATE_ID_LAYOUT.size() * 5 * 2)],
+            &state_memory.data(&store)[..(state_id_layout.size() * 5 * 2)],
             &[
                 4, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0,
                 2, 0, 0, 0, 1, 0, 0, 0, 3, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0
@@ -514,8 +526,11 @@ pub mod tests {
     #[test]
     fn test_state_id_larger_than_one_byte() {
         let overall = Layout::new::<()>();
+        let state_id_layout = Layout::new::<u32>();
+
         // Layout one sparse array at offset 0 with 512 states capacity.
-        let (_overall, sparse_set_layout) = SparseSetLayout::with_num_states(512, overall).unwrap();
+        let (_overall, sparse_set_layout) =
+            SparseSetLayout::with_num_states(512, overall, &state_id_layout).unwrap();
         let module_bytes = compile_test_module(&sparse_set_layout);
         let (_engine, _module, mut store, instance) = setup_interpreter(module_bytes);
         let (init, contains, insert) = get_sparse_set_fns(&instance, &store);
@@ -542,25 +557,25 @@ pub mod tests {
 
         // dense entries
         assert_eq!(
-            &state_memory.data(&store)[0..STATE_ID_LAYOUT.size()],
+            &state_memory.data(&store)[0..state_id_layout.size()],
             &[0, 1, 0, 0]
         );
         assert_eq!(
-            &state_memory.data(&store)[STATE_ID_LAYOUT.size()..(2 * STATE_ID_LAYOUT.size())],
+            &state_memory.data(&store)[state_id_layout.size()..(2 * state_id_layout.size())],
             &[255, 1, 0, 0]
         );
 
         // sparse entries
         assert_eq!(
             &state_memory.data(&store)[(sparse_set_layout.sparse_array_offset
-                + 256 * STATE_ID_LAYOUT.size())
-                ..(sparse_set_layout.sparse_array_offset + 257 * STATE_ID_LAYOUT.size())],
+                + 256 * state_id_layout.size())
+                ..(sparse_set_layout.sparse_array_offset + 257 * state_id_layout.size())],
             &[0, 0, 0, 0]
         );
         assert_eq!(
             &state_memory.data(&store)[(sparse_set_layout.sparse_array_offset
-                + 511 * STATE_ID_LAYOUT.size())
-                ..(sparse_set_layout.sparse_array_offset + 512 * STATE_ID_LAYOUT.size())],
+                + 511 * state_id_layout.size())
+                ..(sparse_set_layout.sparse_array_offset + 512 * state_id_layout.size())],
             &[1, 0, 0, 0]
         );
     }

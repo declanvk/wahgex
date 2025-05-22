@@ -4,7 +4,7 @@
 use std::alloc::{Layout, LayoutError};
 
 use regex_automata::nfa::thompson::NFA;
-use wasm_encoder::{MemArg, NameMap, ValType};
+use wasm_encoder::{NameMap, ValType};
 
 use crate::util::repeat;
 
@@ -13,7 +13,7 @@ use super::{
         ActiveDataSegment, CompileContext, Function, FunctionDefinition, FunctionIdx,
         FunctionSignature,
     },
-    STATE_ID_LAYOUT,
+    instructions::InstructionSinkExt,
 };
 
 /// TODO: Write docs for item
@@ -34,7 +34,7 @@ impl PatternLayout {
             .collect::<Vec<_>>();
 
         let (pattern_start_table, pattern_start_stride) =
-            repeat(&STATE_ID_LAYOUT, ctx.nfa.pattern_len())?;
+            repeat(ctx.state_id_layout(), ctx.nfa.pattern_len())?;
         let (overall, pattern_start_table_pos) = overall.extend(pattern_start_table)?;
 
         ctx.sections.add_active_data_segment(ActiveDataSegment {
@@ -61,14 +61,18 @@ pub struct PatternFunctions {
 
 impl PatternFunctions {
     pub fn new(ctx: &mut CompileContext, layout: &PatternLayout) -> Self {
-        let start_id = ctx.add_function(Self::lookup_start_fn(&ctx.nfa, layout));
+        let start_id = ctx.add_function(Self::lookup_start_fn(
+            &ctx.nfa,
+            layout,
+            ctx.state_id_layout(),
+        ));
 
         Self {
             lookup_start: start_id,
         }
     }
 
-    fn lookup_start_fn(nfa: &NFA, layout: &PatternLayout) -> Function {
+    fn lookup_start_fn(nfa: &NFA, layout: &PatternLayout, state_id_layout: &Layout) -> Function {
         let mut locals_name_map = NameMap::new();
         // Parameters
         locals_name_map.append(0, "pattern_id");
@@ -106,11 +110,11 @@ impl PatternFunctions {
                     .to_ne_bytes(),
             ))
             .i64_mul()
-            .i32_load(MemArg {
-                offset: u64::try_from(layout.pattern_start_table_pos).unwrap(),
-                align: STATE_ID_LAYOUT.align().ilog2(),
-                memory_index: 1, // from state memory
-            })
+            .state_id_load(
+                u64::try_from(layout.pattern_start_table_pos).unwrap(),
+                // state memory
+                state_id_layout,
+            )
             .i32_const(true as i32)
             .end();
 

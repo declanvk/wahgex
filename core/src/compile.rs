@@ -1,7 +1,5 @@
 //! TODO: Write docs for this module
 
-use std::alloc::Layout;
-
 use input::{InputFunctions, InputLayout};
 use matching::MatchingFunctions;
 use state::{StateFunctions, StateLayout};
@@ -10,12 +8,10 @@ pub use crate::error::BuildError;
 
 use self::context::CompileContext;
 
-/// The layout of a [`StateId`][regex_automata::util::primitives::StateID]
-const STATE_ID_LAYOUT: Layout = Layout::new::<u32>();
-
 mod context;
 mod epsilon_closure;
 pub mod input;
+mod instructions;
 mod lookaround;
 mod matching;
 mod pattern;

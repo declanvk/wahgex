@@ -546,6 +546,8 @@ mod tests {
                 .export_all_functions(true)
                 .export_state(true),
         );
+        // Assume all tests use less than 255 states
+        assert_eq!(ctx.state_id_layout(), &Layout::new::<u8>());
 
         let overall = Layout::new::<()>();
         let (overall, sparse_set_layout) = SparseSetLayout::new(&mut ctx, overall).unwrap();
@@ -560,7 +562,7 @@ mod tests {
         module.finish()
     }
 
-    fn setup_epsilon_closure_test(nfa: NFA, haystack: &[u8]) -> impl FnMut(i32, i64, &[i32]) + '_ {
+    fn setup_epsilon_closure_test(nfa: NFA, haystack: &[u8]) -> impl FnMut(i32, i64, &[u8]) + '_ {
         let module_bytes = compile_test_module(nfa.clone());
         let (_engine, _module, mut store, instance) = setup_interpreter(&module_bytes);
         let branch_to_epsilon_closure = instance
@@ -576,7 +578,7 @@ mod tests {
         // Assuming that haystack starts at 0
         haystack_memory.data_mut(&mut store)[0..haystack.len()].copy_from_slice(haystack);
 
-        move |state_id, at_offset: i64, expected_states: &[i32]| {
+        move |state_id, at_offset: i64, expected_states: &[u8]| {
             let haystack_ptr = 0;
             let haystack_len = haystack.len() as i64;
             // Would be safer if we passed the layout through and we read the set start
@@ -615,7 +617,7 @@ mod tests {
 
             // Would be safer if we passed the layout through and we read the set start
             // position instead of assuming its at 0.
-            let states = &unsafe { state_memory.data(&store).align_to::<i32>().1 }[0..new_set_len];
+            let states = &unsafe { state_memory.data(&store).align_to::<u8>().1 }[0..new_set_len];
             assert_eq!(states, expected_states, "state [{state_id}] @ {at_offset}");
         }
     }
