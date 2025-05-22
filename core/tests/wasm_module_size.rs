@@ -1,6 +1,7 @@
 use std::{collections::HashMap, fmt::Write};
 
 use common::configure_pikevm_builder;
+use rayon::iter::{ParallelBridge, ParallelIterator};
 use regex_test::{
     anyhow::{self, Context},
     RegexTest,
@@ -11,6 +12,7 @@ mod common;
 
 #[derive(Debug)]
 struct WasmSizeResult {
+    group: String,
     size: usize,
     name: String,
 }
@@ -19,29 +21,36 @@ struct WasmSizeResult {
 fn wasm_module_size_of() {
     let suite = common::suite().unwrap();
 
-    let mut groups: HashMap<&str, Vec<WasmSizeResult>> = HashMap::new();
-    let builder = PikeVM::builder();
+    let all_regexes = suite
+        .iter()
+        .par_bridge()
+        .filter_map(|test| {
+            if !test.compiles() {
+                return None;
+            }
 
-    for test in suite.iter() {
-        if !test.compiles() {
-            continue;
-        }
+            let reg = match compile(PikeVM::builder(), test, test.regexes())
+                .context(format!("compiling regex [{}]", test.full_name()))
+                .unwrap()
+            {
+                CompileOutput::Skip => {
+                    return None;
+                },
+                CompileOutput::Compiled(reg) => reg,
+            };
 
-        let reg = match compile(builder.clone(), test, test.regexes())
-            .context(format!("compiling regex [{}]", test.full_name()))
-            .unwrap()
-        {
-            CompileOutput::Skip => continue,
-            CompileOutput::Compiled(reg) => reg,
-        };
-
-        groups
-            .entry(test.group())
-            .or_default()
-            .push(WasmSizeResult {
+            Some(WasmSizeResult {
+                group: test.group().into(),
                 size: reg.get_wasm().len(),
                 name: test.name().into(),
-            });
+            })
+        })
+        .collect::<Vec<_>>();
+
+    let mut groups: HashMap<_, Vec<WasmSizeResult>> = HashMap::new();
+
+    for result in all_regexes {
+        groups.entry(result.group.clone()).or_default().push(result);
     }
 
     let formatted = format_grouped_results(groups).unwrap();
@@ -50,14 +59,14 @@ fn wasm_module_size_of() {
 }
 
 fn format_grouped_results(
-    mut groups: HashMap<&str, Vec<WasmSizeResult>>,
+    mut groups: HashMap<String, Vec<WasmSizeResult>>,
 ) -> anyhow::Result<String> {
     let mut formatted = String::new();
-    let mut group_names: Vec<_> = groups.keys().copied().collect();
+    let mut group_names: Vec<_> = groups.keys().cloned().collect();
     group_names.sort();
 
     for group in group_names {
-        let mut results = groups.remove(group).unwrap();
+        let mut results = groups.remove(&group).unwrap();
         writeln!(&mut formatted, "[{group}]")?;
         results.sort_by(|a, b| a.name.cmp(&b.name));
         let max_name_len = results.iter().map(|res| res.name.len()).max().unwrap_or(0);

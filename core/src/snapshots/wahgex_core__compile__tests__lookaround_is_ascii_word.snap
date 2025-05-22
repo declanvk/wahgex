@@ -1,0 +1,921 @@
+---
+source: core/src/compile.rs
+expression: pretty
+---
+(module
+  (type $sparse_set_contains_fn (;0;) (func (param i64 i32 i32) (result i32)))
+  (type $sparse_set_insert_fn (;1;) (func (param i32 i32 i64) (result i32)))
+  (type $look_is_word_ascii_fn (;2;) (func (param i64 i64 i64) (result i32)))
+  (type $look_is_word_ascii_negate_fn (;3;) (func (param i64 i64 i64) (result i32)))
+  (type $epsilon_closure_s0_fn (;4;) (func (param i64 i64 i64 i64 i32) (result i32)))
+  (type $epsilon_closure_s2_fn (;5;) (func (param i64 i64 i64 i64 i32) (result i32)))
+  (type $epsilon_closure_s8_fn (;6;) (func (param i64 i64 i64 i64 i32) (result i32)))
+  (type $epsilon_closure_s9_fn (;7;) (func (param i64 i64 i64 i64 i32) (result i32)))
+  (type $branch_to_epsilon_closure_fn (;8;) (func (param i64 i64 i64 i64 i32 i32) (result i32)))
+  (type $transition_s1_fn (;9;) (func (param i64 i64 i64 i64 i32) (result i32 i32)))
+  (type $transition_s3_fn (;10;) (func (param i64 i64 i64 i64 i32) (result i32 i32)))
+  (type $transition_s4_fn (;11;) (func (param i64 i64 i64 i64 i32) (result i32 i32)))
+  (type $transition_s5_fn (;12;) (func (param i64 i64 i64 i64 i32) (result i32 i32)))
+  (type $transition_s6_fn (;13;) (func (param i64 i64 i64 i64 i32) (result i32 i32)))
+  (type $transition_s7_fn (;14;) (func (param i64 i64 i64 i64 i32) (result i32 i32)))
+  (type $transition_s10_fn (;15;) (func (param i64 i64 i64 i64 i32) (result i32 i32)))
+  (type $branch_to_transition_fn (;16;) (func (param i64 i64 i64 i64 i32 i32) (result i32 i32)))
+  (type $branch_to_transition_is_match_block_sig (;17;) (func (param i32)))
+  (type $make_current_transitions_fn (;18;) (func (param i64 i64 i64 i64 i32 i64 i32) (result i32 i32)))
+  (type $lookup_start_id_fn (;19;) (func (param i32) (result i32 i32)))
+  (type $prepare_input_fn (;20;) (func (param i64) (result i32)))
+  (type $assert_input_args_wf_fn (;21;) (func (param i32 i32 i32 i64 i64 i64)))
+  (type $pattern_lookup_start_result_block_sig (;22;) (func (param i32)))
+  (type $start_config_fn (;23;) (func (param i32 i32) (result i32 i32 i32)))
+  (type $start_config_is_some_block_sig (;24;) (func (param i32 i32) (result i32 i32)))
+  (type $make_current_transitions_is_match_block_sig (;25;) (func (param i32)))
+  (type $is_match_fn (;26;) (func (param i32 i32 i64 i64 i64) (result i32)))
+  (memory $haystack (;0;) i64 1)
+  (memory $state (;1;) i64 1 1)
+  (export "prepare_input" (func $prepare_input))
+  (export "is_match" (func $is_match))
+  (export "haystack" (memory $haystack))
+  (func $sparse_set_contains (;0;) (type $sparse_set_contains_fn) (param $set_ptr i64) (param $set_len i32) (param $state_id i32) (result i32)
+    (local $index i32)
+    local.get $state_id
+    i64.extend_i32_u
+    i64.const 1
+    i64.mul
+    local.get $set_ptr
+    i64.add
+    i32.load8_u $state offset=11
+    local.tee $index
+    local.get $set_len
+    i32.ge_u
+    if ;; label = @1
+      i32.const 0
+      return
+    end
+    local.get $index
+    i64.extend_i32_u
+    i64.const 1
+    i64.mul
+    local.get $set_ptr
+    i64.add
+    i32.load8_u $state
+    local.get $state_id
+    i32.eq
+  )
+  (func $sparse_set_insert (;1;) (type $sparse_set_insert_fn) (param $set_len i32) (param $state_id i32) (param $set_ptr i64) (result i32)
+    local.get $set_ptr
+    local.get $set_len
+    local.get $state_id
+    call $sparse_set_contains
+    i32.const 1
+    i32.eq
+    if ;; label = @1
+      local.get $set_len
+      return
+    end
+    local.get $set_len
+    i64.extend_i32_u
+    i64.const 1
+    i64.mul
+    local.get $set_ptr
+    i64.add
+    local.get $state_id
+    i32.store8 $state
+    local.get $state_id
+    i64.extend_i32_u
+    i64.const 1
+    i64.mul
+    local.get $set_ptr
+    i64.add
+    local.get $set_len
+    i32.store8 $state offset=11
+    local.get $set_len
+    i32.const 1
+    i32.add
+  )
+  (func $look_is_word_ascii (;2;) (type $look_is_word_ascii_fn) (param $haystack_ptr i64) (param $haystack_len i64) (param $at_offset i64) (result i32)
+    (local $word_before i32) (local $word_after i32)
+    local.get $at_offset
+    i64.eqz
+    if ;; label = @1
+      i32.const 0
+      local.set $word_before
+    else
+      local.get $at_offset
+      i64.const 1
+      i64.sub
+      local.get $haystack_ptr
+      i64.add
+      i32.load8_u
+      i64.extend_i32_u
+      i32.load8_u $state offset=45
+      local.set $word_before
+    end
+    local.get $at_offset
+    local.get $haystack_len
+    i64.ge_u
+    if ;; label = @1
+      i32.const 0
+      local.set $word_after
+    else
+      local.get $at_offset
+      local.get $haystack_ptr
+      i64.add
+      i32.load8_u
+      i64.extend_i32_u
+      i32.load8_u $state offset=45
+      local.set $word_after
+    end
+    local.get $word_before
+    local.get $word_after
+    i32.ne
+  )
+  (func $look_is_word_ascii_negate (;3;) (type $look_is_word_ascii_negate_fn) (param $haystack_ptr i64) (param $haystack_len i64) (param $at_offset i64) (result i32)
+    local.get $haystack_ptr
+    local.get $haystack_len
+    local.get $at_offset
+    call $look_is_word_ascii
+    i32.const 1
+    i32.xor
+  )
+  (func $epsilon_closure_s0 (;4;) (type $epsilon_closure_s0_fn) (param $haystack_ptr i64) (param $haystack_len i64) (param $at_offset i64) (param $next_set_ptr i64) (param $next_set_len i32) (result i32)
+    (local $new_next_set_len i32)
+    local.get $next_set_len
+    i32.const 0
+    local.get $next_set_ptr
+    call $sparse_set_insert
+    i32.const 1
+    local.get $next_set_ptr
+    call $sparse_set_insert
+    i32.const 2
+    local.get $next_set_ptr
+    call $sparse_set_insert
+    i32.const 3
+    local.get $next_set_ptr
+    call $sparse_set_insert
+  )
+  (func $epsilon_closure_s2 (;5;) (type $epsilon_closure_s2_fn) (param $haystack_ptr i64) (param $haystack_len i64) (param $at_offset i64) (param $next_set_ptr i64) (param $next_set_len i32) (result i32)
+    (local $new_next_set_len i32)
+    local.get $next_set_len
+    i32.const 2
+    local.get $next_set_ptr
+    call $sparse_set_insert
+    i32.const 3
+    local.get $next_set_ptr
+    call $sparse_set_insert
+  )
+  (func $epsilon_closure_s8 (;6;) (type $epsilon_closure_s8_fn) (param $haystack_ptr i64) (param $haystack_len i64) (param $at_offset i64) (param $next_set_ptr i64) (param $next_set_len i32) (result i32)
+    (local $new_next_set_len i32)
+    local.get $next_set_len
+    i32.const 8
+    local.get $next_set_ptr
+    call $sparse_set_insert
+    local.tee $new_next_set_len
+    local.get $next_set_len
+    i32.ne
+    if ;; label = @1
+      local.get $haystack_ptr
+      local.get $haystack_len
+      local.get $at_offset
+      call $look_is_word_ascii_negate
+      if ;; label = @2
+        local.get $haystack_ptr
+        local.get $haystack_len
+        local.get $at_offset
+        local.get $next_set_ptr
+        local.get $new_next_set_len
+        call $epsilon_closure_s9
+        local.set $new_next_set_len
+      end
+    end
+    local.get $new_next_set_len
+  )
+  (func $epsilon_closure_s9 (;7;) (type $epsilon_closure_s9_fn) (param $haystack_ptr i64) (param $haystack_len i64) (param $at_offset i64) (param $next_set_ptr i64) (param $next_set_len i32) (result i32)
+    (local $new_next_set_len i32)
+    local.get $next_set_len
+    i32.const 9
+    local.get $next_set_ptr
+    call $sparse_set_insert
+    i32.const 10
+    local.get $next_set_ptr
+    call $sparse_set_insert
+  )
+  (func $branch_to_epsilon_closure (;8;) (type $branch_to_epsilon_closure_fn) (param $haystack_ptr i64) (param $haystack_len i64) (param $at_offset i64) (param $next_set_ptr i64) (param $next_set_len i32) (param $state_id i32) (result i32)
+    local.get $state_id
+    i32.const 0
+    i32.eq
+    if ;; label = @1
+      local.get $haystack_ptr
+      local.get $haystack_len
+      local.get $at_offset
+      local.get $next_set_ptr
+      local.get $next_set_len
+      call $epsilon_closure_s0
+      return
+    end
+    local.get $state_id
+    i32.const 2
+    i32.eq
+    if ;; label = @1
+      local.get $haystack_ptr
+      local.get $haystack_len
+      local.get $at_offset
+      local.get $next_set_ptr
+      local.get $next_set_len
+      call $epsilon_closure_s2
+      return
+    end
+    local.get $state_id
+    i32.const 8
+    i32.eq
+    if ;; label = @1
+      local.get $haystack_ptr
+      local.get $haystack_len
+      local.get $at_offset
+      local.get $next_set_ptr
+      local.get $next_set_len
+      call $epsilon_closure_s8
+      return
+    end
+    local.get $state_id
+    i32.const 9
+    i32.eq
+    if ;; label = @1
+      local.get $haystack_ptr
+      local.get $haystack_len
+      local.get $at_offset
+      local.get $next_set_ptr
+      local.get $next_set_len
+      call $epsilon_closure_s9
+      return
+    end
+    local.get $next_set_len
+    local.get $state_id
+    local.get $next_set_ptr
+    call $sparse_set_insert
+  )
+  (func $transition_s1 (;9;) (type $transition_s1_fn) (param $haystack_ptr i64) (param $haystack_len i64) (param $at_offset i64) (param $next_set_ptr i64) (param $next_set_len i32) (result i32 i32)
+    (local $byte i32) (local $next_state i32)
+    local.get $at_offset
+    local.get $haystack_len
+    i64.ge_u
+    if ;; label = @1
+      local.get $next_set_len
+      i32.const 0
+      return
+    end
+    local.get $haystack_ptr
+    local.get $at_offset
+    i64.add
+    i32.load8_u
+    local.set $byte
+    i32.const 0
+    local.get $byte
+    i32.gt_u
+    if ;; label = @1
+      local.get $next_set_len
+      i32.const 0
+      return
+    end
+    local.get $byte
+    i32.const 255
+    i32.gt_u
+    if ;; label = @1
+      local.get $next_set_len
+      i32.const 0
+      return
+    end
+    i32.const 0
+    local.set $next_state
+    local.get $at_offset
+    i64.const 1
+    i64.add
+    local.set $at_offset
+    local.get $haystack_ptr
+    local.get $haystack_len
+    local.get $at_offset
+    local.get $next_set_ptr
+    local.get $next_set_len
+    local.get $next_state
+    call $branch_to_epsilon_closure
+    i32.const 0
+  )
+  (func $transition_s3 (;10;) (type $transition_s3_fn) (param $haystack_ptr i64) (param $haystack_len i64) (param $at_offset i64) (param $next_set_ptr i64) (param $next_set_len i32) (result i32 i32)
+    (local $byte i32) (local $next_state i32)
+    local.get $at_offset
+    local.get $haystack_len
+    i64.ge_u
+    if ;; label = @1
+      local.get $next_set_len
+      i32.const 0
+      return
+    end
+    local.get $haystack_ptr
+    local.get $at_offset
+    i64.add
+    i32.load8_u
+    local.set $byte
+    i32.const 104
+    local.get $byte
+    i32.gt_u
+    if ;; label = @1
+      local.get $next_set_len
+      i32.const 0
+      return
+    end
+    local.get $byte
+    i32.const 104
+    i32.gt_u
+    if ;; label = @1
+      local.get $next_set_len
+      i32.const 0
+      return
+    end
+    i32.const 4
+    local.set $next_state
+    local.get $at_offset
+    i64.const 1
+    i64.add
+    local.set $at_offset
+    local.get $haystack_ptr
+    local.get $haystack_len
+    local.get $at_offset
+    local.get $next_set_ptr
+    local.get $next_set_len
+    local.get $next_state
+    call $branch_to_epsilon_closure
+    i32.const 0
+  )
+  (func $transition_s4 (;11;) (type $transition_s4_fn) (param $haystack_ptr i64) (param $haystack_len i64) (param $at_offset i64) (param $next_set_ptr i64) (param $next_set_len i32) (result i32 i32)
+    (local $byte i32) (local $next_state i32)
+    local.get $at_offset
+    local.get $haystack_len
+    i64.ge_u
+    if ;; label = @1
+      local.get $next_set_len
+      i32.const 0
+      return
+    end
+    local.get $haystack_ptr
+    local.get $at_offset
+    i64.add
+    i32.load8_u
+    local.set $byte
+    i32.const 101
+    local.get $byte
+    i32.gt_u
+    if ;; label = @1
+      local.get $next_set_len
+      i32.const 0
+      return
+    end
+    local.get $byte
+    i32.const 101
+    i32.gt_u
+    if ;; label = @1
+      local.get $next_set_len
+      i32.const 0
+      return
+    end
+    i32.const 5
+    local.set $next_state
+    local.get $at_offset
+    i64.const 1
+    i64.add
+    local.set $at_offset
+    local.get $haystack_ptr
+    local.get $haystack_len
+    local.get $at_offset
+    local.get $next_set_ptr
+    local.get $next_set_len
+    local.get $next_state
+    call $branch_to_epsilon_closure
+    i32.const 0
+  )
+  (func $transition_s5 (;12;) (type $transition_s5_fn) (param $haystack_ptr i64) (param $haystack_len i64) (param $at_offset i64) (param $next_set_ptr i64) (param $next_set_len i32) (result i32 i32)
+    (local $byte i32) (local $next_state i32)
+    local.get $at_offset
+    local.get $haystack_len
+    i64.ge_u
+    if ;; label = @1
+      local.get $next_set_len
+      i32.const 0
+      return
+    end
+    local.get $haystack_ptr
+    local.get $at_offset
+    i64.add
+    i32.load8_u
+    local.set $byte
+    i32.const 108
+    local.get $byte
+    i32.gt_u
+    if ;; label = @1
+      local.get $next_set_len
+      i32.const 0
+      return
+    end
+    local.get $byte
+    i32.const 108
+    i32.gt_u
+    if ;; label = @1
+      local.get $next_set_len
+      i32.const 0
+      return
+    end
+    i32.const 6
+    local.set $next_state
+    local.get $at_offset
+    i64.const 1
+    i64.add
+    local.set $at_offset
+    local.get $haystack_ptr
+    local.get $haystack_len
+    local.get $at_offset
+    local.get $next_set_ptr
+    local.get $next_set_len
+    local.get $next_state
+    call $branch_to_epsilon_closure
+    i32.const 0
+  )
+  (func $transition_s6 (;13;) (type $transition_s6_fn) (param $haystack_ptr i64) (param $haystack_len i64) (param $at_offset i64) (param $next_set_ptr i64) (param $next_set_len i32) (result i32 i32)
+    (local $byte i32) (local $next_state i32)
+    local.get $at_offset
+    local.get $haystack_len
+    i64.ge_u
+    if ;; label = @1
+      local.get $next_set_len
+      i32.const 0
+      return
+    end
+    local.get $haystack_ptr
+    local.get $at_offset
+    i64.add
+    i32.load8_u
+    local.set $byte
+    i32.const 108
+    local.get $byte
+    i32.gt_u
+    if ;; label = @1
+      local.get $next_set_len
+      i32.const 0
+      return
+    end
+    local.get $byte
+    i32.const 108
+    i32.gt_u
+    if ;; label = @1
+      local.get $next_set_len
+      i32.const 0
+      return
+    end
+    i32.const 7
+    local.set $next_state
+    local.get $at_offset
+    i64.const 1
+    i64.add
+    local.set $at_offset
+    local.get $haystack_ptr
+    local.get $haystack_len
+    local.get $at_offset
+    local.get $next_set_ptr
+    local.get $next_set_len
+    local.get $next_state
+    call $branch_to_epsilon_closure
+    i32.const 0
+  )
+  (func $transition_s7 (;14;) (type $transition_s7_fn) (param $haystack_ptr i64) (param $haystack_len i64) (param $at_offset i64) (param $next_set_ptr i64) (param $next_set_len i32) (result i32 i32)
+    (local $byte i32) (local $next_state i32)
+    local.get $at_offset
+    local.get $haystack_len
+    i64.ge_u
+    if ;; label = @1
+      local.get $next_set_len
+      i32.const 0
+      return
+    end
+    local.get $haystack_ptr
+    local.get $at_offset
+    i64.add
+    i32.load8_u
+    local.set $byte
+    i32.const 111
+    local.get $byte
+    i32.gt_u
+    if ;; label = @1
+      local.get $next_set_len
+      i32.const 0
+      return
+    end
+    local.get $byte
+    i32.const 111
+    i32.gt_u
+    if ;; label = @1
+      local.get $next_set_len
+      i32.const 0
+      return
+    end
+    i32.const 8
+    local.set $next_state
+    local.get $at_offset
+    i64.const 1
+    i64.add
+    local.set $at_offset
+    local.get $haystack_ptr
+    local.get $haystack_len
+    local.get $at_offset
+    local.get $next_set_ptr
+    local.get $next_set_len
+    local.get $next_state
+    call $branch_to_epsilon_closure
+    i32.const 0
+  )
+  (func $transition_s10 (;15;) (type $transition_s10_fn) (param $haystack_ptr i64) (param $haystack_len i64) (param $at_offset i64) (param $next_set_ptr i64) (param $next_set_len i32) (result i32 i32)
+    local.get $next_set_len
+    i32.const 1
+  )
+  (func $branch_to_transition (;16;) (type $branch_to_transition_fn) (param $haystack_ptr i64) (param $haystack_len i64) (param $at_offset i64) (param $next_set_ptr i64) (param $next_set_len i32) (param $state_id i32) (result i32 i32)
+    local.get $state_id
+    i32.const 1
+    i32.eq
+    if ;; label = @1
+      local.get $haystack_ptr
+      local.get $haystack_len
+      local.get $at_offset
+      local.get $next_set_ptr
+      local.get $next_set_len
+      call $transition_s1
+      return
+    end
+    local.get $state_id
+    i32.const 3
+    i32.eq
+    if ;; label = @1
+      local.get $haystack_ptr
+      local.get $haystack_len
+      local.get $at_offset
+      local.get $next_set_ptr
+      local.get $next_set_len
+      call $transition_s3
+      return
+    end
+    local.get $state_id
+    i32.const 4
+    i32.eq
+    if ;; label = @1
+      local.get $haystack_ptr
+      local.get $haystack_len
+      local.get $at_offset
+      local.get $next_set_ptr
+      local.get $next_set_len
+      call $transition_s4
+      return
+    end
+    local.get $state_id
+    i32.const 5
+    i32.eq
+    if ;; label = @1
+      local.get $haystack_ptr
+      local.get $haystack_len
+      local.get $at_offset
+      local.get $next_set_ptr
+      local.get $next_set_len
+      call $transition_s5
+      return
+    end
+    local.get $state_id
+    i32.const 6
+    i32.eq
+    if ;; label = @1
+      local.get $haystack_ptr
+      local.get $haystack_len
+      local.get $at_offset
+      local.get $next_set_ptr
+      local.get $next_set_len
+      call $transition_s6
+      return
+    end
+    local.get $state_id
+    i32.const 7
+    i32.eq
+    if ;; label = @1
+      local.get $haystack_ptr
+      local.get $haystack_len
+      local.get $at_offset
+      local.get $next_set_ptr
+      local.get $next_set_len
+      call $transition_s7
+      return
+    end
+    local.get $state_id
+    i32.const 10
+    i32.eq
+    if ;; label = @1
+      local.get $haystack_ptr
+      local.get $haystack_len
+      local.get $at_offset
+      local.get $next_set_ptr
+      local.get $next_set_len
+      call $transition_s10
+      return
+    end
+    local.get $next_set_len
+    i32.const 0
+  )
+  (func $make_current_transitions (;17;) (type $make_current_transitions_fn) (param $haystack_ptr i64) (param $haystack_len i64) (param $at_offset i64) (param $current_set_ptr i64) (param $current_set_len i32) (param $next_set_ptr i64) (param $next_set_len i32) (result i32 i32)
+    (local $loop_index i32) (local $state_id i32) (local $new_next_set_len i32)
+    i32.const 0
+    local.set $loop_index
+    local.get $next_set_len
+    local.set $new_next_set_len
+    loop $set_iter_loop
+      local.get $loop_index
+      local.get $current_set_len
+      i32.ge_u
+      if ;; label = @2
+        local.get $new_next_set_len
+        i32.const 0
+        return
+      end
+      local.get $loop_index
+      i64.extend_i32_u
+      i64.const 1
+      i64.mul
+      local.get $current_set_ptr
+      i64.add
+      i32.load8_u $state
+      local.set $state_id
+      local.get $haystack_ptr
+      local.get $haystack_len
+      local.get $at_offset
+      local.get $next_set_ptr
+      local.get $new_next_set_len
+      local.get $state_id
+      call $branch_to_transition
+      if (type $branch_to_transition_is_match_block_sig) (param i32) ;; label = @2
+        i32.const 1
+        return
+      else
+        local.set $new_next_set_len
+      end
+      local.get $loop_index
+      i32.const 1
+      i32.add
+      local.set $loop_index
+      br $set_iter_loop
+    end
+    local.get $new_next_set_len
+    i32.const 0
+  )
+  (func $lookup_start_id (;18;) (type $lookup_start_id_fn) (param $pattern_id i32) (result i32 i32)
+    local.get $pattern_id
+    i32.const 1
+    i32.ge_u
+    if ;; label = @1
+      i32.const 0
+      i32.const 0
+      return
+    end
+    local.get $pattern_id
+    i64.extend_i32_u
+    i64.const 1
+    i64.mul
+    i32.load8_u $state offset=44
+    i32.const 1
+  )
+  (func $prepare_input (;19;) (type $prepare_input_fn) (param $haystack_len i64) (result i32)
+    (local $num_new_page_required i64)
+    local.get $haystack_len
+    i64.const 0
+    i64.add
+    i64.const 0
+    i64.eq
+    if ;; label = @1
+      i32.const 0
+      return
+    end
+    local.get $haystack_len
+    i64.const 0
+    i64.add
+    i64.const 1
+    i64.sub
+    i64.const 65536
+    i64.div_u
+    i64.const 1
+    i64.add
+    memory.size
+    i64.sub
+    local.tee $num_new_page_required
+    i64.const 0
+    i64.gt_s
+    if (result i32) ;; label = @1
+      local.get $num_new_page_required
+      memory.grow
+      i64.const -1
+      i64.eq
+      if ;; label = @2
+        i32.const 2
+        return
+      end
+      i32.const 1
+    else
+      i32.const 0
+    end
+  )
+  (func $assert_input_args_wf (;20;) (type $assert_input_args_wf_fn) (param $earliest i32) (param $anchored i32) (param $anchored_pattern i32) (param $span_start i64) (param $span_end i64) (param $haystack_len i64)
+    local.get $earliest
+    i32.const 1
+    i32.ne
+    local.get $earliest
+    i32.const 0
+    i32.ne
+    i32.and
+    if $check_earliest_wf
+      unreachable
+    end
+    local.get $anchored
+    i32.const 0
+    i32.ne
+    local.get $anchored
+    i32.const 1
+    i32.ne
+    local.get $anchored
+    i32.const 2
+    i32.ne
+    i32.and
+    i32.and
+    if $check_anchored_wf
+      unreachable
+    end
+    local.get $anchored
+    i32.const 2
+    i32.ne
+    local.get $anchored_pattern
+    i32.const 0
+    i32.ne
+    i32.and
+    if $check_anchored_pattern_wf
+      unreachable
+    end
+    local.get $span_start
+    local.get $span_end
+    i64.gt_u
+    if $check_span_start_wf
+      unreachable
+    end
+    local.get $span_end
+    local.get $haystack_len
+    i64.gt_u
+    if $check_span_end_wf
+      unreachable
+    end
+    i64.const 0
+    local.get $haystack_len
+    i64.add
+    memory.size
+    i64.const 65536
+    i64.mul
+    i64.gt_u
+    if ;; label = @1
+      unreachable
+    end
+  )
+  (func $start_config (;21;) (type $start_config_fn) (param $anchored i32) (param $anchored_pattern i32) (result i32 i32 i32)
+    (local $pattern_start i32)
+    local.get $anchored
+    i32.const 0
+    i32.eq
+    if ;; label = @1
+      i32.const 2
+      i32.const 0
+      i32.const 1
+      return
+    end
+    local.get $anchored
+    i32.const 1
+    i32.eq
+    if ;; label = @1
+      i32.const 2
+      i32.const 1
+      i32.const 1
+      return
+    end
+    local.get $anchored
+    i32.const 2
+    i32.eq
+    if ;; label = @1
+      local.get $anchored_pattern
+      call $lookup_start_id
+      if (type $pattern_lookup_start_result_block_sig) (param i32) ;; label = @2
+        i32.const 1
+        i32.const 1
+        return
+      else
+        drop
+      end
+    end
+    i32.const 0
+    i32.const 0
+    i32.const 0
+  )
+  (func $is_match (;22;) (type $is_match_fn) (param $anchored i32) (param $anchored_pattern i32) (param $span_start i64) (param $span_end i64) (param $haystack_len i64) (result i32)
+    (local $at_offset i64) (local $curr_set_ptr i64) (local $next_set_ptr i64) (local $curr_set_len i32) (local $next_set_len i32) (local $start_state_id i32) (local $is_anchored i32)
+    i32.const 1
+    local.get $anchored
+    local.get $anchored_pattern
+    local.get $span_start
+    local.get $span_end
+    local.get $haystack_len
+    call $assert_input_args_wf
+    local.get $anchored
+    local.get $anchored_pattern
+    call $start_config
+    i32.const 0
+    i32.eq
+    if (type $start_config_is_some_block_sig) (param i32 i32) (result i32 i32) ;; label = @1
+      drop
+      drop
+      i32.const 0
+      return
+    end
+    local.set $is_anchored
+    local.set $start_state_id
+    i64.const 0
+    local.set $curr_set_ptr
+    i64.const 22
+    local.set $next_set_ptr
+    local.get $span_start
+    local.set $at_offset
+    loop $haystack_search_loop
+      local.get $at_offset
+      local.get $span_end
+      i64.gt_u
+      if ;; label = @2
+        i32.const 0
+        return
+      end
+      local.get $curr_set_len
+      i32.const 0
+      i32.eq
+      local.get $is_anchored
+      local.get $at_offset
+      local.get $span_start
+      i64.gt_u
+      i32.and
+      i32.and
+      if ;; label = @2
+        i32.const 0
+        return
+      end
+      local.get $is_anchored
+      i32.const 0
+      i32.eq
+      local.get $at_offset
+      local.get $span_start
+      i64.eq
+      i32.or
+      if ;; label = @2
+        i64.const 0
+        local.get $haystack_len
+        local.get $at_offset
+        local.get $curr_set_ptr
+        local.get $curr_set_len
+        local.get $start_state_id
+        call $branch_to_epsilon_closure
+        local.set $curr_set_len
+      end
+      i64.const 0
+      local.get $haystack_len
+      local.get $at_offset
+      local.get $curr_set_ptr
+      local.get $curr_set_len
+      local.get $next_set_ptr
+      local.get $next_set_len
+      call $make_current_transitions
+      if (type $make_current_transitions_is_match_block_sig) (param i32) ;; label = @2
+        drop
+        i32.const 1
+        return
+      else
+        local.set $next_set_len
+      end
+      local.get $curr_set_ptr
+      local.get $next_set_ptr
+      local.set $curr_set_ptr
+      local.set $next_set_ptr
+      local.get $curr_set_len
+      local.get $next_set_len
+      local.set $curr_set_len
+      local.set $next_set_len
+      i32.const 0
+      local.set $next_set_len
+      local.get $at_offset
+      i64.const 1
+      i64.add
+      local.set $at_offset
+      br $haystack_search_loop
+    end
+    i32.const 0
+  )
+  (data $pattern_start_table (;0;) (memory $state) (i64.const 44) "\02\00\00\00")
+  (data $utf8_is_word_byte_table (;1;) (memory $state) (i64.const 45) "\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\01\01\01\01\01\01\01\01\01\01\00\00\00\00\00\00\00\01\01\01\01\01\01\01\01\01\01\01\01\01\01\01\01\01\01\01\01\01\01\01\01\01\01\00\00\00\00\01\00\01\01\01\01\01\01\01\01\01\01\01\01\01\01\01\01\01\01\01\01\01\01\01\01\01\01\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00\00")
+)

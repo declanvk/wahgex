@@ -161,4 +161,11 @@ mod tests {
         let pretty = wasm_print_module(&compiled);
         insta::assert_snapshot!(pretty);
     }
+
+    #[test]
+    fn lookaround_is_ascii_word() {
+        let compiled = compile(r"(?-u)hello\B").unwrap();
+        let pretty = wasm_print_module(&compiled);
+        insta::assert_snapshot!(pretty);
+    }
 }
