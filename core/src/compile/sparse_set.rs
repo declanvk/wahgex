@@ -37,9 +37,11 @@ use super::{
 /// set in WASM memory.
 #[derive(Debug)]
 pub struct SparseSetLayout {
+    #[cfg_attr(not(test), expect(dead_code))]
     dense_layout: Layout,
     #[cfg_attr(not(test), expect(dead_code))]
     dense_stride: usize,
+    #[cfg_attr(not(test), expect(dead_code))]
     sparse_layout: Layout,
     #[cfg_attr(not(test), expect(dead_code))]
     sparse_stride: usize,
@@ -103,8 +105,6 @@ impl SparseSetLayout {
 #[derive(Debug)]
 pub struct SparseSetFunctions {
     #[expect(dead_code)]
-    pub init: FunctionIdx,
-    #[expect(dead_code)]
     pub contains: FunctionIdx,
     pub insert: FunctionIdx,
 }
@@ -113,61 +113,10 @@ impl SparseSetFunctions {
     /// Register all the sparse set functions and save their
     /// [`FunctionIdx`]s.
     pub fn new(ctx: &mut CompileContext, layout: &SparseSetLayout) -> Self {
-        let init = ctx.add_function(Self::init_fn(layout));
         let contains = ctx.add_function(Self::contains_fn(layout));
         let insert = ctx.add_function(Self::insert_fn(layout, contains));
 
-        Self {
-            init,
-            contains,
-            insert,
-        }
-    }
-
-    /// Returns a WASM function that will initialize this sparse set
-    fn init_fn(layout: &SparseSetLayout) -> Function {
-        let mut locals_name_map = NameMap::new();
-        // Parameters
-        locals_name_map.append(0, "set_ptr");
-
-        let mut body = wasm_encoder::Function::new([]);
-        body.instructions()
-            // memory fill the dense array with zeroes. Dense array is at offset 0
-            // offset argument
-            .local_get(0)
-            // val argument
-            .i32_const(0)
-            // len argument
-            .i64_const(layout.dense_layout.size().try_into().unwrap())
-            // memory 1 is `state`
-            .memory_fill(1)
-            // memory fill the sparse array with zeroes. sparse array is at offset N
-            // offset argument
-            .local_get(0)
-            .i64_const(layout.sparse_array_offset.try_into().unwrap())
-            .i64_add()
-            // val argument
-            .i32_const(0)
-            // len argument
-            .i64_const(layout.sparse_layout.size().try_into().unwrap())
-            // memory 1 is `state`
-            .memory_fill(1)
-            .end();
-
-        Function {
-            sig: FunctionSignature {
-                name: "sparse_set_init".into(),
-                params_ty: &[ValType::I64],
-                results_ty: &[],
-                export: false,
-            },
-            def: FunctionDefinition {
-                body,
-                locals_name_map,
-                labels_name_map: None,
-                branch_hints: None,
-            },
-        }
+        Self { contains, insert }
     }
 
     /// Returns a WASM function that will check whether a given state ID is
@@ -343,14 +292,9 @@ pub mod tests {
         instance: &wasmi::Instance,
         store: &wasmi::Store<()>,
     ) -> (
-        wasmi::TypedFunc<i64, ()>,
         wasmi::TypedFunc<(i64, i32, i32), i32>, // contains: (ptr, len, id) -> bool
         wasmi::TypedFunc<(i32, i32, i64), i32>, // insert: (len, id, ptr) -> new_len
     ) {
-        let sparse_set_init = instance
-            .get_typed_func::<i64, ()>(&store, "sparse_set_init")
-            .unwrap();
-
         let sparse_set_contains = instance
             .get_typed_func::<(i64, i32, i32), i32>(&store, "sparse_set_contains")
             .unwrap();
@@ -359,7 +303,7 @@ pub mod tests {
             .get_typed_func::<(i32, i32, i64), i32>(&store, "sparse_set_insert")
             .unwrap();
 
-        (sparse_set_init, sparse_set_contains, sparse_set_insert)
+        (sparse_set_contains, sparse_set_insert)
     }
 
     #[test]
@@ -403,7 +347,7 @@ pub mod tests {
             SparseSetLayout::with_num_states(5, overall, &state_id_layout).unwrap();
         let module_bytes = compile_test_module(&sparse_set_layout);
         let (_engine, _module, mut store, instance) = setup_interpreter(module_bytes);
-        let (init, contains, insert) = get_sparse_set_fns(&instance, &store);
+        let (contains, insert) = get_sparse_set_fns(&instance, &store);
 
         let state_memory = instance.get_memory(&store, "state").unwrap();
 
@@ -413,7 +357,6 @@ pub mod tests {
                 .to_ne_bytes(),
         );
         let set_len = 0;
-        init.call(&mut store, set_ptr).unwrap();
 
         let res = contains.call(&mut store, (set_ptr, set_len, 0)).unwrap();
         // true because 0 was not present in the set
@@ -477,13 +420,11 @@ pub mod tests {
             SparseSetLayout::with_num_states(5, overall, &state_id_layout).unwrap();
         let module_bytes = compile_test_module(&sparse_set_layout);
         let (_engine, _module, mut store, instance) = setup_interpreter(module_bytes);
-        let (init, contains, insert) = get_sparse_set_fns(&instance, &store);
+        let (contains, insert) = get_sparse_set_fns(&instance, &store);
 
         let state_memory = instance.get_memory(&store, "state").unwrap();
 
         let set_ptr = 0;
-        init.call(&mut store, set_ptr).unwrap();
-
         let mut set_len = 0;
 
         for state_id in [4, 1, 0, 2, 3] {
@@ -533,12 +474,11 @@ pub mod tests {
             SparseSetLayout::with_num_states(512, overall, &state_id_layout).unwrap();
         let module_bytes = compile_test_module(&sparse_set_layout);
         let (_engine, _module, mut store, instance) = setup_interpreter(module_bytes);
-        let (init, contains, insert) = get_sparse_set_fns(&instance, &store);
+        let (contains, insert) = get_sparse_set_fns(&instance, &store);
 
         let state_memory = instance.get_memory(&store, "state").unwrap();
 
         let set_ptr = 0;
-        init.call(&mut store, set_ptr).unwrap();
         let set_len = 0;
 
         let res = contains.call(&mut store, (set_ptr, set_len, 511)).unwrap();

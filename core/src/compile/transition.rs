@@ -1157,7 +1157,7 @@ mod tests {
             )
             .unwrap();
 
-        let (_, _, set_insert) = get_sparse_set_fns(&instance, &store);
+        let (_, set_insert) = get_sparse_set_fns(&instance, &store);
 
         let haystack_memory = instance.get_memory(&store, "haystack").unwrap();
         let state_memory = instance.get_memory(&store, "state").unwrap();
