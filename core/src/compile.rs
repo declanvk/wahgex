@@ -1,4 +1,5 @@
-//! TODO: Write docs for this module
+//! This module is responsible for compiling a Thompson NFA (Non-deterministic
+//! Finite Automaton) into a WebAssembly module.
 
 use input::{InputFunctions, InputLayout};
 use matching::MatchingFunctions;
@@ -19,7 +20,8 @@ mod sparse_set;
 mod state;
 mod transition;
 
-/// TODO: Write docs for this item
+/// Compiles a given Thompson NFA into a [`CompiledRegex`] WebAssembly module,
+/// using the provided configuration.
 pub fn compile_from_nfa(
     nfa: regex_automata::nfa::thompson::NFA,
     config: super::Config,
@@ -44,7 +46,8 @@ pub fn compile_from_nfa(
     })
 }
 
-/// TODO: Write docs for this item
+/// Represents a regular expression that has been compiled into WebAssembly
+/// bytes.
 #[derive(Debug)]
 pub struct CompiledRegex {
     wasm_bytes: Vec<u8>,
@@ -102,7 +105,8 @@ mod tests {
         wasm_text.expect("should be able to print WASM module in WAT format")
     }
 
-    /// TODO: Write docs for this item
+    /// A test helper function that compiles a regex pattern string into a
+    /// [`CompiledRegex`].
     fn compile(pattern: &str) -> Result<CompiledRegex, Box<dyn std::error::Error>> {
         let nfa = regex_automata::nfa::thompson::NFA::new(pattern)?;
 

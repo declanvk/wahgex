@@ -14,8 +14,10 @@ use super::{
 
 /// This type will be used to plan the WASM memory layout and precompute the
 /// ptr/offsets of various data structures.
+#[derive(Debug)]
 pub struct StateLayout {
-    /// TODO: Write docs for this item
+    /// The overall memory layout encompassing all state-related data
+    /// structures.
     pub overall: Layout,
     transition: TransitionLayout,
     pub first_sparse_set: SparseSetLayout,
@@ -25,7 +27,8 @@ pub struct StateLayout {
 }
 
 impl StateLayout {
-    /// TODO: Write docs for this item
+    /// Creates a new `StateLayout` by sequentially arranging layouts for
+    /// various components.
     pub fn new(ctx: &mut CompileContext) -> Result<Self, LayoutError> {
         // Using a ZST to start the layout so that we have minimal alignment
         // requirements
@@ -61,7 +64,8 @@ pub struct StateFunctions {
 }
 
 impl StateFunctions {
-    /// TODO: Write docs for this item
+    /// Creates and registers all WebAssembly functions required for managing
+    /// the NFA runtime state.
     pub fn new(ctx: &mut CompileContext, layout: &StateLayout) -> Result<Self, BuildError> {
         // It shouldn't matter if we pass the first or the second sparse set, since they
         // have the same

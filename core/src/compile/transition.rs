@@ -90,7 +90,8 @@ struct DenseTable {
 }
 
 impl TransitionLayout {
-    /// TODO: Write docs for this item
+    /// Creates a new `TransitionLayout` by calculating the memory offsets for
+    /// transition lookup tables.
     pub fn new(
         ctx: &mut CompileContext,
         mut overall: Layout,
@@ -231,7 +232,8 @@ pub struct TransitionFunctions {
 }
 
 impl TransitionFunctions {
-    /// Create a new set of epsilon closure functions for the given input.
+    /// Creates and registers all WebAssembly functions required for handling
+    /// NFA state transitions.
     pub fn new(
         ctx: &mut CompileContext,
         epsilon_closures: &EpsilonClosureFunctions,

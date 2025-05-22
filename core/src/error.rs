@@ -2,7 +2,10 @@
 
 use std::{alloc::LayoutError, error::Error, fmt};
 
-/// TODO: Write docs for this item
+/// Represents an error that can occur during the regex compilation process.
+///
+/// This error type encapsulates various kinds of issues, from NFA construction
+/// problems to memory layout errors and unsupported regex features.
 #[derive(Debug)]
 pub struct BuildError {
     kind: Box<BuildErrorKind>,
@@ -67,7 +70,10 @@ impl From<regex_automata::util::look::UnicodeWordBoundaryError> for BuildError {
     }
 }
 
-/// TODO: Write docs for this item
+/// Represents the specific kind of a [`BuildError`].
+///
+/// This enum provides more granular information about the underlying cause of a
+/// `BuildError`.
 #[derive(Debug)]
 enum BuildErrorKind {
     Layout(LayoutError),

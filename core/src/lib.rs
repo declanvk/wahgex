@@ -1,6 +1,8 @@
-//! TODO: Write docs for this crate
+//! `wahgex-core` is a library for compiling regular expressions into
+//! WebAssembly modules that can be executed efficiently.
 
 #![deny(missing_docs, missing_debug_implementations)]
+#![warn(missing_debug_implementations)]
 
 use compile::{compile_from_nfa, CompiledRegex};
 
@@ -14,7 +16,7 @@ mod error;
 mod runtime;
 mod util;
 
-/// TODO: Write docs for this item
+/// Configuration options for building a [`PikeVM`].
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Config {
     #[cfg(test)]
@@ -24,46 +26,53 @@ pub struct Config {
 }
 
 impl Config {
-    /// TODO: Write docs for this item
+    /// The default size of a memory page in bytes (64 KiB).
     pub const DEFAULT_PAGE_SIZE: usize = 64 * 1024;
 
-    /// TODO: Write docs for this item
+    /// Creates a new default configuration.
     pub fn new() -> Self {
         Self::default()
     }
 
-    /// TODO: Write docs for this item
+    /// Configures whether the internal state memory should be exported.
+    ///
+    /// This is primarily for testing and debugging purposes.
     #[cfg(test)]
     pub fn export_state(mut self, export_state: bool) -> Self {
         self.export_state = Some(export_state);
         self
     }
 
-    /// TODO: Write docs for this item
+    /// Returns `true` if the internal state memory is configured to be
+    /// exported.
     #[cfg(test)]
     pub fn get_export_state(&self) -> bool {
         self.export_state.unwrap_or(false)
     }
 
-    /// TODO: Write docs for this item
+    /// Configures whether all internal functions should be exported.
+    ///
+    /// This is primarily for testing and debugging purposes.
     #[cfg(test)]
     pub fn export_all_functions(mut self, export_all_functions: bool) -> Self {
         self.export_all_functions = Some(export_all_functions);
         self
     }
 
-    /// TODO: Write docs for this item
+    /// Returns `true` if all internal functions are configured to be exported.
     #[cfg(test)]
     pub fn get_export_all_functions(&self) -> bool {
         self.export_all_functions.unwrap_or(false)
     }
 
-    /// TODO: Write docs for this item
+    /// Returns the configured memory page size in bytes.
     pub fn get_page_size(&self) -> usize {
         Self::DEFAULT_PAGE_SIZE
     }
 
-    /// TODO: Write docs for this item
+    /// Overwrites the current configuration with options from another config.
+    ///
+    /// Options set in `other` take precedence over options in `self`.
     #[cfg_attr(not(test), expect(unused_variables))]
     fn overwrite(self, other: Self) -> Self {
         Self {
@@ -75,7 +84,7 @@ impl Config {
     }
 }
 
-/// TODO: Write docs for this item
+/// A builder for compiling regular expressions into a [`PikeVM`].
 #[derive(Clone, Debug)]
 pub struct Builder {
     config: Config,
@@ -96,23 +105,23 @@ impl Default for Builder {
 }
 
 impl Builder {
-    /// Create a new PikeVM builder with its default configuration.
+    /// Creates a new PikeVM builder with its default configuration.
     pub fn new() -> Builder {
         Self::default()
     }
 
-    /// TODO: Write docs for this item
+    /// Compiles a single regular expression pattern into a [`PikeVM`].
     pub fn build(&self, pattern: &str) -> Result<PikeVM, BuildError> {
         self.build_many(&[pattern])
     }
 
-    /// TODO: Write docs for this item
+    /// Compiles multiple regular expression patterns into a single [`PikeVM`].
     pub fn build_many<P: AsRef<str>>(&self, patterns: &[P]) -> Result<PikeVM, BuildError> {
         let nfa = self.thompson.build_many(patterns)?;
         self.build_from_nfa(nfa)
     }
 
-    /// TODO: Write docs for this item
+    /// Compiles a Thompson NFA into a [`PikeVM`].
     pub fn build_from_nfa(
         &self,
         nfa: regex_automata::nfa::thompson::NFA,
@@ -126,27 +135,26 @@ impl Builder {
         })
     }
 
-    /// TODO: Write docs for this item
+    /// Configures the builder with the given [`Config`].
     pub fn configure(&mut self, config: Config) -> &mut Builder {
         self.config = self.config.overwrite(config);
         self
     }
 
-    /// TODO: Write docs for this item
+    /// Configures the syntax options for the underlying regex compiler.
     pub fn syntax(&mut self, config: regex_automata::util::syntax::Config) -> &mut Builder {
         self.thompson.syntax(config);
         self
     }
 
-    /// TODO: Write docs for this item
+    /// Configures the Thompson NFA compiler options.
     pub fn thompson(&mut self, config: regex_automata::nfa::thompson::Config) -> &mut Builder {
         self.thompson.configure(config);
         self
     }
 }
 
-/// TODO: Write docs for this item
-// TODO: Needs a better name
+/// A compiled regular expression represented as a Pike VM, ready for matching.
 #[derive(Debug)]
 pub struct PikeVM {
     config: Config,
@@ -155,61 +163,72 @@ pub struct PikeVM {
 }
 
 impl PikeVM {
-    /// TODO: Write docs for this item
+    /// Compiles a single regular expression pattern into a new [`PikeVM`] using
+    /// the default builder.
     pub fn new(pattern: &str) -> Result<PikeVM, BuildError> {
         PikeVM::builder().build(pattern)
     }
 
-    /// TODO: Write docs for this item
+    /// Compiles multiple regular expression patterns into a single new
+    /// [`PikeVM`] using the default builder.
     pub fn new_many<P: AsRef<str>>(patterns: &[P]) -> Result<PikeVM, BuildError> {
         PikeVM::builder().build_many(patterns)
     }
 
-    /// TODO: Write docs for this item
+    /// Creates a new [`PikeVM`] directly from a Thompson NFA using the default
+    /// builder.
     pub fn new_from_nfa(nfa: regex_automata::nfa::thompson::NFA) -> Result<PikeVM, BuildError> {
         PikeVM::builder().build_from_nfa(nfa)
     }
 
-    /// TODO: Write docs for this item
+    /// Creates a [`PikeVM`] that always matches the empty string at any
+    /// position.
     pub fn always_match() -> Result<PikeVM, BuildError> {
         let nfa = regex_automata::nfa::thompson::NFA::always_match();
         PikeVM::new_from_nfa(nfa)
     }
 
-    /// TODO: Write docs for this item
+    /// Creates a [`PikeVM`] that never matches.
     pub fn never_match() -> Result<PikeVM, BuildError> {
         let nfa = regex_automata::nfa::thompson::NFA::never_match();
         PikeVM::new_from_nfa(nfa)
     }
 
-    /// TODO: Write docs for this item
+    /// Returns a new default [`Config`] for configuring a [`Builder`].
     pub fn config() -> Config {
         Config::new()
     }
 
-    /// TODO: Write docs for this item
+    /// Returns a new default [`Builder`] for compiling regular expressions.
     pub fn builder() -> Builder {
         Builder::new()
     }
 
-    /// TODO: Write docs for this item
+    /// Returns the number of patterns compiled into this PikeVM.
     pub fn pattern_len(&self) -> usize {
         self.nfa.pattern_len()
     }
 
     /// Return the config for this `PikeVM`.
+    ///
+    /// Note that this is the configuration used to *build* the PikeVM,
+    /// not necessarily the configuration used for a specific match operation.
     #[inline]
     pub fn get_config(&self) -> &Config {
         &self.config
     }
 
     /// Returns a reference to the underlying NFA.
+    ///
+    /// This is the NFA that was compiled into the PikeVM.
     #[inline]
     pub fn get_nfa(&self) -> &regex_automata::nfa::thompson::NFA {
         &self.nfa
     }
 
     /// Returns a reference to the compiled WASM bytes.
+    ///
+    /// These bytes represent the compiled PikeVM logic.
     #[inline]
     pub fn get_wasm(&self) -> &[u8] {
         self.wasm.as_ref()

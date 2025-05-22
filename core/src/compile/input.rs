@@ -33,7 +33,10 @@ pub struct InputOpts {
 }
 
 impl InputOpts {
-    /// TODO: Write docs for this item
+    /// Creates a new `InputOpts` from a [`regex_automata::Input`].
+    ///
+    /// This translates the anchor mode and earliest flag into i32 values
+    /// suitable for WASM.
     pub fn new(input: &regex_automata::Input<'_>) -> InputOpts {
         let (anchored, anchored_pattern) = match input.get_anchored() {
             Anchored::No => (0, 0),
@@ -49,7 +52,10 @@ impl InputOpts {
     }
 }
 
-/// TODO: Write docs for item
+/// Defines the memory layout for input-related data within the WebAssembly
+/// module.
+///
+/// This includes the starting position of the haystack.
 #[derive(Debug)]
 pub struct InputLayout {
     pub haystack_start_pos: usize,
@@ -57,7 +63,10 @@ pub struct InputLayout {
 }
 
 impl InputLayout {
-    /// TODO: Write docs for item
+    /// Creates a new [`InputLayout`].
+    ///
+    /// Currently, this primarily determines the starting offset for the
+    /// haystack.
     pub fn new(_ctx: &mut CompileContext) -> Result<Self, LayoutError> {
         let overall = Layout::new::<()>();
 
@@ -72,7 +81,10 @@ impl InputLayout {
     }
 }
 
-/// TODO: Write docs for this item
+/// Holds indices to WebAssembly functions related to input processing.
+///
+/// These functions are used by the compiled regex to manage and interpret the
+/// input haystack.
 #[derive(Debug)]
 pub struct InputFunctions {
     #[expect(dead_code)]
@@ -83,7 +95,12 @@ pub struct InputFunctions {
 }
 
 impl InputFunctions {
-    /// TODO: Write docs for this item
+    /// Creates and registers the necessary WebAssembly functions for input
+    /// handling.
+    ///
+    /// This includes functions for preparing input memory, asserting argument
+    /// well-formedness, checking UTF-8 boundaries, and configuring start
+    /// conditions.
     pub fn new(
         ctx: &mut CompileContext,
         input_layout: &InputLayout,
@@ -490,11 +507,14 @@ impl InputFunctions {
 /// [`prepare_input`][InputFunctions::prepare_input_fn] function.
 #[derive(Debug)]
 pub enum PrepareInputResult {
-    /// TODO
+    /// Indicates that the input preparation was successful and no memory growth
+    /// was needed.
     SuccessNoGrowth = 0,
-    /// TODO
+    /// Indicates that the input preparation was successful and memory was grown
+    /// to accommodate the haystack.
     SuccessGrowth = 1,
-    /// TODO
+    /// Indicates that input preparation failed, likely due to an inability to
+    /// grow memory.
     Failure = 2,
 }
 
