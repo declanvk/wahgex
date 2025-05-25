@@ -158,7 +158,18 @@ impl LookFunctions {
                         .as_ref()
                         .expect("should have generated table"),
                 ),
-
+                Look::WordStartHalfAscii => Self::is_word_start_half_ascii_fn(
+                    layout
+                        .is_word_byte_table
+                        .as_ref()
+                        .expect("should have generated table"),
+                ),
+                Look::WordEndHalfAscii => Self::is_word_end_half_ascii_fn(
+                    layout
+                        .is_word_byte_table
+                        .as_ref()
+                        .expect("should have generated table"),
+                ),
                 _ => unreachable!("Should be unreachable due to first loop through lookset"),
             };
 
@@ -177,11 +188,7 @@ impl LookFunctions {
     }
 
     fn is_start_fn() -> FunctionDefinition {
-        let mut locals_name_map = NameMap::new();
-        // Parameters
-        locals_name_map.append(0, "haystack_ptr");
-        locals_name_map.append(1, "haystack_len");
-        locals_name_map.append(2, "at_offset");
+        let locals_name_map = lookaround_fn_common_name_map();
 
         // Sketch:
         // ```rust
@@ -206,11 +213,7 @@ impl LookFunctions {
     }
 
     fn is_end_fn() -> FunctionDefinition {
-        let mut locals_name_map = NameMap::new();
-        // Parameters
-        locals_name_map.append(0, "haystack_ptr");
-        locals_name_map.append(1, "haystack_len");
-        locals_name_map.append(2, "at_offset");
+        let locals_name_map = lookaround_fn_common_name_map();
 
         // Sketch:
         // ```rust
@@ -234,11 +237,7 @@ impl LookFunctions {
     }
 
     fn is_start_lf_fn(look_matcher: &LookMatcher) -> FunctionDefinition {
-        let mut locals_name_map = NameMap::new();
-        // Parameters
-        locals_name_map.append(0, "haystack_ptr");
-        locals_name_map.append(1, "haystack_len");
-        locals_name_map.append(2, "at_offset");
+        let locals_name_map = lookaround_fn_common_name_map();
 
         // Sketch:
         // ```rust
@@ -279,11 +278,7 @@ impl LookFunctions {
     }
 
     fn is_end_lf_fn(look_matcher: &LookMatcher) -> FunctionDefinition {
-        let mut locals_name_map = NameMap::new();
-        // Parameters
-        locals_name_map.append(0, "haystack_ptr");
-        locals_name_map.append(1, "haystack_len");
-        locals_name_map.append(2, "at_offset");
+        let locals_name_map = lookaround_fn_common_name_map();
 
         // Sketch:
         // ```rust
@@ -323,11 +318,7 @@ impl LookFunctions {
     }
 
     fn is_start_crlf_fn() -> FunctionDefinition {
-        let mut locals_name_map = NameMap::new();
-        // Parameters
-        locals_name_map.append(0, "haystack_ptr");
-        locals_name_map.append(1, "haystack_len");
-        locals_name_map.append(2, "at_offset");
+        let locals_name_map = lookaround_fn_common_name_map();
 
         // Sketch:
         // ```rust
@@ -419,11 +410,7 @@ impl LookFunctions {
     }
 
     fn is_end_crlf_fn() -> FunctionDefinition {
-        let mut locals_name_map = NameMap::new();
-        // Parameters
-        locals_name_map.append(0, "haystack_ptr");
-        locals_name_map.append(1, "haystack_len");
-        locals_name_map.append(2, "at_offset");
+        let locals_name_map = lookaround_fn_common_name_map();
 
         // Sketch:
         // ```rust
@@ -518,11 +505,7 @@ impl LookFunctions {
     }
 
     fn is_word_ascii_fn(is_word_byte_table: &IsWordByteTable) -> FunctionDefinition {
-        let mut locals_name_map = NameMap::new();
-        // Parameters
-        locals_name_map.append(0, "haystack_ptr");
-        locals_name_map.append(1, "haystack_len");
-        locals_name_map.append(2, "at_offset");
+        let mut locals_name_map = lookaround_fn_common_name_map();
         // Locals
         locals_name_map.append(3, "word_before");
         locals_name_map.append(4, "word_after");
@@ -557,11 +540,7 @@ impl LookFunctions {
     }
 
     fn is_word_ascii_negate_fn(is_word_ascii: FunctionIdx) -> FunctionDefinition {
-        let mut locals_name_map = NameMap::new();
-        // Parameters
-        locals_name_map.append(0, "haystack_ptr");
-        locals_name_map.append(1, "haystack_len");
-        locals_name_map.append(2, "at_offset");
+        let locals_name_map = lookaround_fn_common_name_map();
 
         // Sketch:
         // ```rust
@@ -587,11 +566,9 @@ impl LookFunctions {
     }
 
     fn is_word_start_ascii_fn(is_word_byte_table: &IsWordByteTable) -> FunctionDefinition {
-        let mut locals_name_map = NameMap::new();
-        // Parameters
-        locals_name_map.append(0, "haystack_ptr");
-        locals_name_map.append(1, "haystack_len");
-        locals_name_map.append(2, "at_offset");
+        let mut locals_name_map = lookaround_fn_common_name_map();
+        // Locals
+        locals_name_map.append(3, "word_before");
 
         // Sketch:
         // ```rust
@@ -607,12 +584,10 @@ impl LookFunctions {
 
         Self::word_after_ascii_instructions(&mut instructions, is_word_byte_table);
         instructions
-            .local_set(4)
             // return !word_before && word_after;
             .local_get(3)
             .i32_const(1)
             .i32_xor()
-            .local_get(4)
             .i32_and()
             .end();
 
@@ -625,11 +600,9 @@ impl LookFunctions {
     }
 
     fn is_word_end_ascii_fn(is_word_byte_table: &IsWordByteTable) -> FunctionDefinition {
-        let mut locals_name_map = NameMap::new();
-        // Parameters
-        locals_name_map.append(0, "haystack_ptr");
-        locals_name_map.append(1, "haystack_len");
-        locals_name_map.append(2, "at_offset");
+        let mut locals_name_map = lookaround_fn_common_name_map();
+        // Locals
+        locals_name_map.append(3, "word_before");
 
         // Sketch:
         // ```rust
@@ -645,13 +618,65 @@ impl LookFunctions {
 
         Self::word_after_ascii_instructions(&mut instructions, is_word_byte_table);
         instructions
-            .local_set(4)
             // return word_before && !word_after;
-            .local_get(3)
-            .local_get(4)
             .i32_const(1)
             .i32_xor()
+            .local_get(3)
             .i32_and()
+            .end();
+
+        FunctionDefinition {
+            body,
+            locals_name_map,
+            labels_name_map: None,
+            branch_hints: None,
+        }
+    }
+
+    fn is_word_start_half_ascii_fn(is_word_byte_table: &IsWordByteTable) -> FunctionDefinition {
+        let locals_name_map = lookaround_fn_common_name_map();
+
+        // Sketch:
+        // ```rust
+        // ...
+        // return !word_before;
+        // ```
+
+        let mut body = wasm_encoder::Function::new([]);
+
+        let mut instructions = body.instructions();
+        Self::word_before_ascii_instructions(&mut instructions, is_word_byte_table);
+        instructions
+            // return !word_before;
+            .i32_const(1)
+            .i32_xor()
+            .end();
+
+        FunctionDefinition {
+            body,
+            locals_name_map,
+            labels_name_map: None,
+            branch_hints: None,
+        }
+    }
+
+    fn is_word_end_half_ascii_fn(is_word_byte_table: &IsWordByteTable) -> FunctionDefinition {
+        let locals_name_map = lookaround_fn_common_name_map();
+
+        // Sketch:
+        // ```rust
+        // ...
+        // return !word_after;
+        // ```
+
+        let mut body = wasm_encoder::Function::new([]);
+        let mut instructions = body.instructions();
+
+        Self::word_after_ascii_instructions(&mut instructions, is_word_byte_table);
+        instructions
+            // return !word_after;
+            .i32_const(1)
+            .i32_xor()
             .end();
 
         FunctionDefinition {
@@ -754,6 +779,15 @@ fn lookaround_fn_signature(name: &str) -> FunctionSignature {
     }
 }
 
+fn lookaround_fn_common_name_map() -> NameMap {
+    let mut locals_name_map = NameMap::new();
+    locals_name_map.append(0, "haystack_ptr");
+    locals_name_map.append(1, "haystack_len");
+    locals_name_map.append(2, "at_offset");
+
+    locals_name_map
+}
+
 fn lookaround_fn_name(look: Look) -> &'static str {
     match look {
         Look::Start => "look_is_start",
@@ -784,8 +818,6 @@ fn is_unsupported_lookaround(look: Look) -> bool {
             | Look::WordUnicodeNegate
             | Look::WordStartUnicode
             | Look::WordEndUnicode
-            | Look::WordStartHalfAscii
-            | Look::WordEndHalfAscii
             | Look::WordStartHalfUnicode
             | Look::WordEndHalfUnicode
     )

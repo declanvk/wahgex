@@ -5,8 +5,8 @@ expression: pretty
 (module
   (type $sparse_set_contains_fn (;0;) (func (param i64 i32 i32) (result i32)))
   (type $sparse_set_insert_fn (;1;) (func (param i32 i32 i64) (result i32)))
-  (type $look_is_word_start_ascii_fn (;2;) (func (param i64 i64 i64) (result i32)))
-  (type $look_is_word_end_ascii_fn (;3;) (func (param i64 i64 i64) (result i32)))
+  (type $look_is_word_start_half_ascii_fn (;2;) (func (param i64 i64 i64) (result i32)))
+  (type $look_is_word_end_half_ascii_fn (;3;) (func (param i64 i64 i64) (result i32)))
   (type $epsilon_closure_s0_fn (;4;) (func (param i64 i64 i64 i64 i32) (result i32)))
   (type $epsilon_closure_s2_fn (;5;) (func (param i64 i64 i64 i64 i32) (result i32)))
   (type $epsilon_closure_s3_fn (;6;) (func (param i64 i64 i64 i64 i32) (result i32)))
@@ -93,8 +93,7 @@ expression: pretty
     i32.const 1
     i32.add
   )
-  (func $look_is_word_start_ascii (;2;) (type $look_is_word_start_ascii_fn) (param $haystack_ptr i64) (param $haystack_len i64) (param $at_offset i64) (result i32)
-    (local $word_before i32) (local i32)
+  (func $look_is_word_start_half_ascii (;2;) (type $look_is_word_start_half_ascii_fn) (param $haystack_ptr i64) (param $haystack_len i64) (param $at_offset i64) (result i32)
     local.get $at_offset
     i64.eqz
     if (result i32) ;; label = @1
@@ -109,42 +108,10 @@ expression: pretty
       i64.extend_i32_u
       i32.load8_u $state offset=49
     end
-    local.set $word_before
-    local.get $at_offset
-    local.get $haystack_len
-    i64.ge_u
-    if (result i32) ;; label = @1
-      i32.const 0
-    else
-      local.get $at_offset
-      local.get $haystack_ptr
-      i64.add
-      i32.load8_u
-      i64.extend_i32_u
-      i32.load8_u $state offset=49
-    end
-    local.get $word_before
     i32.const 1
     i32.xor
-    i32.and
   )
-  (func $look_is_word_end_ascii (;3;) (type $look_is_word_end_ascii_fn) (param $haystack_ptr i64) (param $haystack_len i64) (param $at_offset i64) (result i32)
-    (local $word_before i32) (local i32)
-    local.get $at_offset
-    i64.eqz
-    if (result i32) ;; label = @1
-      i32.const 0
-    else
-      local.get $at_offset
-      i64.const 1
-      i64.sub
-      local.get $haystack_ptr
-      i64.add
-      i32.load8_u
-      i64.extend_i32_u
-      i32.load8_u $state offset=49
-    end
-    local.set $word_before
+  (func $look_is_word_end_half_ascii (;3;) (type $look_is_word_end_half_ascii_fn) (param $haystack_ptr i64) (param $haystack_len i64) (param $at_offset i64) (result i32)
     local.get $at_offset
     local.get $haystack_len
     i64.ge_u
@@ -160,8 +127,6 @@ expression: pretty
     end
     i32.const 1
     i32.xor
-    local.get $word_before
-    i32.and
   )
   (func $epsilon_closure_s0 (;4;) (type $epsilon_closure_s0_fn) (param $haystack_ptr i64) (param $haystack_len i64) (param $at_offset i64) (param $next_set_ptr i64) (param $next_set_len i32) (result i32)
     (local $new_next_set_len i32)
@@ -185,7 +150,7 @@ expression: pretty
       local.get $haystack_ptr
       local.get $haystack_len
       local.get $at_offset
-      call $look_is_word_start_ascii
+      call $look_is_word_start_half_ascii
       if ;; label = @2
         local.get $new_next_set_len
         i32.const 4
@@ -212,7 +177,7 @@ expression: pretty
       local.get $haystack_ptr
       local.get $haystack_len
       local.get $at_offset
-      call $look_is_word_start_ascii
+      call $look_is_word_start_half_ascii
       if ;; label = @2
         local.get $new_next_set_len
         i32.const 4
@@ -236,7 +201,7 @@ expression: pretty
       local.get $haystack_ptr
       local.get $haystack_len
       local.get $at_offset
-      call $look_is_word_start_ascii
+      call $look_is_word_start_half_ascii
       if ;; label = @2
         local.get $new_next_set_len
         i32.const 4
@@ -260,7 +225,7 @@ expression: pretty
       local.get $haystack_ptr
       local.get $haystack_len
       local.get $at_offset
-      call $look_is_word_end_ascii
+      call $look_is_word_end_half_ascii
       if ;; label = @2
         local.get $haystack_ptr
         local.get $haystack_len

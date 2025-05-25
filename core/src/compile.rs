@@ -175,4 +175,11 @@ mod tests {
         let pretty = wasm_print_module(&compiled);
         insta::assert_snapshot!(pretty);
     }
+
+    #[test]
+    fn lookaround_is_ascii_half_start_end() {
+        let compiled = compile(r"(?-u:\b{start-half}hello\b{end-half})").unwrap();
+        let pretty = wasm_print_module(&compiled);
+        insta::assert_snapshot!(pretty);
+    }
 }
