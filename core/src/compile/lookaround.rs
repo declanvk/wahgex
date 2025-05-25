@@ -97,7 +97,10 @@ pub struct LookFunctions {
 }
 
 impl LookFunctions {
-    const NUM_LOOKS: usize = const { (Look::WordEndHalfUnicode as usize).ilog2() as usize };
+    // Look::WordEndHalfUnicode.as_repr() is 1 << 17. Its ilog2() is 17.
+    // This means indices for look_matches range from 0 to 17, requiring an array of
+    // size 18.
+    const NUM_LOOKS: usize = (Look::WordEndHalfUnicode.as_repr().ilog2() as usize) + 1;
 
     /// TODO: Write docs for this item
     pub fn new(ctx: &mut CompileContext, layout: &LookLayout) -> Result<Self, BuildError> {
@@ -184,7 +187,7 @@ impl LookFunctions {
 
     /// TODO: Write docs for item
     pub fn look_matcher(&self, look: Look) -> Option<FunctionIdx> {
-        self.look_matches[(look as usize).ilog2() as usize]
+        self.look_matches[look.as_repr().ilog2() as usize]
     }
 
     fn is_start_fn() -> FunctionDefinition {
@@ -508,7 +511,6 @@ impl LookFunctions {
         let mut locals_name_map = lookaround_fn_common_name_map();
         // Locals
         locals_name_map.append(3, "word_before");
-        locals_name_map.append(4, "word_after");
 
         // Sketch:
         // ```rust
@@ -524,10 +526,8 @@ impl LookFunctions {
 
         Self::word_after_ascii_instructions(&mut instructions, is_word_byte_table);
         instructions
-            .local_set(4)
             // return word_before != word_after;
             .local_get(3)
-            .local_get(4)
             .i32_ne()
             .end();
 

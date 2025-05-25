@@ -14,7 +14,7 @@ These sets are principally used when traversing an NFA state graph. This
 happens at search time, for example, in the PikeVM. It also happens during DFA
 determinization.
 
-Copied above documentation from https://github.com/rust-lang/regex/blob/master/regex-automata/src/util/sparse_set.rs
+Copied above documentation from <https://github.com/rust-lang/regex/blob/master/regex-automata/src/util/sparse_set.rs>
 and based my implementation off the same file.
 */
 

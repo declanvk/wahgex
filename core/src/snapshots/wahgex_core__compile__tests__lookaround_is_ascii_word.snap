@@ -93,7 +93,7 @@ expression: pretty
     i32.add
   )
   (func $look_is_word_ascii (;2;) (type $look_is_word_ascii_fn) (param $haystack_ptr i64) (param $haystack_len i64) (param $at_offset i64) (result i32)
-    (local $word_before i32) (local $word_after i32)
+    (local $word_before i32) (local i32)
     local.get $at_offset
     i64.eqz
     if (result i32) ;; label = @1
@@ -122,9 +122,7 @@ expression: pretty
       i64.extend_i32_u
       i32.load8_u $state offset=45
     end
-    local.set $word_after
     local.get $word_before
-    local.get $word_after
     i32.ne
   )
   (func $look_is_word_ascii_negate (;3;) (type $look_is_word_ascii_negate_fn) (param $haystack_ptr i64) (param $haystack_len i64) (param $at_offset i64) (result i32)
