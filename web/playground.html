@@ -1,0 +1,44 @@
+<!doctype html>
+<html>
+
+<head>
+    <meta content="text/html;charset=utf-8" http-equiv="Content-Type" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg">
+    <link rel="stylesheet" href="./style.css">
+
+    <title>WAHGEX - Playground</title>
+</head>
+
+<body>
+    <header>
+        <nav>
+            <ul>
+                <li><a href="./index.html">Home</a></li>
+                <li><a href="./playground.html">Playground</a></li>
+                <li><a href="./docs.html">Docs</a></li>
+            </ul>
+        </nav>
+        <h1>WAHGEX - Playground</h1>
+    </header>
+
+    <main>
+        <form id="playgroundForm" onsubmit="return false;">
+            <label for="regexInput">Regular expression</label>
+            <br />
+            <input placeholder="insert your regular expression here" id="regexInput" type="text">
+            <br />
+            <button id="compileButton">Compile</button>
+            <button id="searchButton" disabled>Search</button>
+            <br />
+            <label for="haystackText">Haystack</label>
+            <br />
+            <textarea placeholder="insert your test string here" id="haystackText"></textarea>
+        </form>
+    </main>
+
+    <script src="./main.mjs" type="module" defer></script>
+</body>
+
+</html>

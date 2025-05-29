@@ -1,0 +1,15 @@
+<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <title>Regular Expression Icon</title>
+  <!-- Background rounded square -->
+  <rect width="64" height="64" rx="12" ry="12" fill="#4A5568"/> <!-- Slate Gray 700 -->
+
+  <!-- Magnifying glass -->
+  <!-- Lens (outer ring and inner fill) -->
+  <circle cx="28" cy="28" r="14" fill="#FFFFFF" stroke="#2D3748" stroke-width="4"/> <!-- White lens, Slate Gray 800 ring -->
+
+  <!-- Handle -->
+  <line x1="38" y1="38" x2="48" y2="48" stroke="#2D3748" stroke-width="6" stroke-linecap="round"/> <!-- Slate Gray 800 handle -->
+
+  <!-- Regex symbol inside lens: .* -->
+  <text x="28" y="28" dominant-baseline="middle" text-anchor="middle" font-family="monospace, 'Courier New', Courier" font-size="12" fill="#2D3748" font-weight="bold">.*</text> <!-- Slate Gray 800 text -->
+</svg>
