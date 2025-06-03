@@ -1,6 +1,6 @@
 :root {
     /* Matches the background color from favicon */
-    --background: #4A5568;
+    --background: #4a5568;
 }
 
 @view-transition {
@@ -13,18 +13,17 @@ body {
 }
 
 /* Style the header navigation bar inline with '|' in between links */
-header>nav>ul {
+header > nav > ul {
     list-style-type: none;
     padding: 0;
     display: flex;
 }
 
-
-header>nav>ul>li::after {
+header > nav > ul > li::after {
     content: "|";
 }
 
-header>nav>ul>li:last-child::after {
+header > nav > ul > li:last-child::after {
     content: none;
 }
 
@@ -65,4 +64,9 @@ article {
 
 #regexText {
     width: 100%;
+}
+
+/* This styles the error box that accompanies the regex input */
+#regexError {
+    color: red;
 }

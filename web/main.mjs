@@ -1,4 +1,4 @@
-import init, { compile } from './pkg/wahgex_web.js';
+import init, { compile } from "./pkg/wahgex_web.js";
 
 await init();
 
@@ -7,28 +7,38 @@ function debounce(cb, interval, immediate) {
     var timeout;
 
     return function () {
-        var context = this, args = arguments;
-        var later = function () {
+        const context = this,
+            args = arguments;
+        const later = function () {
             timeout = null;
             if (!immediate) cb.apply(context, args);
         };
 
-        var callNow = immediate && !timeout;
+        const callNow = immediate && !timeout;
 
         clearTimeout(timeout);
         timeout = setTimeout(later, interval);
 
         if (callNow) cb.apply(context, args);
     };
-};
+}
 
 class RegexModule {
     static async create(pattern) {
-        if (pattern == null || !(typeof pattern === 'string')) {
+        if (pattern == null || !(typeof pattern === "string")) {
             return null;
         }
 
-        const moduleBytes = compile(pattern);
+        let moduleBytes;
+        try {
+            moduleBytes = compile(pattern);
+        } catch (err) {
+            if (typeof err === "string") {
+                throw Error(err);
+            } else {
+                throw err;
+            }
+        }
         const { module, instance } = await WebAssembly.instantiate(moduleBytes);
 
         return new RegexModule(pattern, moduleBytes, module, instance);
@@ -39,11 +49,11 @@ class RegexModule {
         this.moduleBytes = moduleBytes;
         this.module = module;
         this.instance = instance;
-        this.encoder = new TextEncoder('utf-8');
+        this.encoder = new TextEncoder("utf-8");
     }
 
     isMatch(haystack) {
-        if (haystack === null || !(typeof haystack === 'string')) {
+        if (haystack === null || !(typeof haystack === "string")) {
             return false;
         }
 
@@ -57,10 +67,15 @@ class RegexModule {
         const spanStart = BigInt(0);
         const spanEnd = BigInt(haystack.length);
         const haystackLen = BigInt(haystack.length);
-        const result = this.instance.exports.is_match(anchored, anchoredPattern, spanStart, spanEnd, haystackLen);
+        const result = this.instance.exports.is_match(
+            anchored,
+            anchoredPattern,
+            spanStart,
+            spanEnd,
+            haystackLen,
+        );
         return Boolean(result);
     }
-
 }
 
 function assert(condition, message) {
@@ -71,65 +86,88 @@ function assert(condition, message) {
 
 let currentModule = null;
 
-const searchButton = document.getElementById('searchButton');
+const searchButton = document.getElementById("searchButton");
 assert(searchButton !== null, "expected search button element present");
 
-const regexInput = document.getElementById('regexInput');
+const regexInput = document.getElementById("regexInput");
 assert(regexInput !== null, "expected regex input element present");
 
-const compileButton = document.getElementById('compileButton');
-assert(compileButton !== null, "expected compile button element present");
-
-const haystackText = document.getElementById('haystackText');
+const haystackText = document.getElementById("haystackText");
 assert(haystackText !== null, "expected haystack text area element present");
 
-regexInput.addEventListener('input', debounce(function (ev) {
-    const value = regexInput.value;
-    if (value === null || !(typeof value === 'string') || value.length === 0) {
-        currentModule = null;
-        searchButton.disabled = true;
-        return;
-    }
+const regexErrorDiv = document.getElementById("regexError");
+assert(regexErrorDiv !== null, "expected regex error div present");
 
-    RegexModule.create(value).then(module => {
-        currentModule = module;
-        searchButton.disabled = false;
-    }).catch(err => {
-        regexInput.setCustomValidity(err.message);
-    });
-}, 500));
+const searchResultDiv = document.getElementById("searchResult");
+assert(searchResultDiv !== null, "expected search result div present");
 
+function clearMessages() {
+    regexErrorDiv.textContent = "";
+    searchResultDiv.textContent = "";
+}
 
-compileButton.addEventListener('click', function (ev) {
-    if (regexInput === null) {
-        return;
-    }
-
-    const value = regexInput.value;
-    if (value === null || !(typeof value === 'string') || value.length === 0) {
-        currentModule = null;
-        searchButton.disabled = true;
-        return;
-    }
-
-    RegexModule.create(value).then(module => {
-        currentModule = module;
-        searchButton.disabled = false;
-    }).catch(err => {
-        regexInput.setCustomValidity(err.message);
-    });
-});
-
-searchButton.addEventListener('click', function (ev) {
+function performSearch() {
+    searchResultDiv.textContent = "";
     if (currentModule === null) {
         return;
     }
 
     const haystack = haystackText.value;
-    if (haystack === null || !(typeof haystack === 'string') || haystack.length === 0) {
+    if (
+        haystack === null ||
+        !(typeof haystack === "string") ||
+        haystack.length === 0
+    ) {
+        searchResultDiv.textContent =
+            "Enter text in the haystack area to search.";
         return;
     }
 
     const result = currentModule.isMatch(haystack);
-    console.log(result);
+    searchResultDiv.textContent = result ? "Match found!" : "No match found.";
+}
+
+regexInput.addEventListener(
+    "input",
+    debounce(function (ev) {
+        clearMessages();
+        const value = regexInput.value;
+        if (
+            value === null ||
+            !(typeof value === "string") ||
+            value.length === 0
+        ) {
+            currentModule = null;
+            searchButton.disabled = true;
+            searchResultDiv.textContent = ""; // Clear result when regex is cleared
+            return;
+        }
+
+        RegexModule.create(value)
+            .then((module) => {
+                currentModule = module;
+                searchButton.disabled = false;
+                // Automatically search if haystack is not empty after successful compilation
+                if (haystackText.value.length > 0) {
+                    performSearch();
+                }
+            })
+            .catch((err) => {
+                currentModule = null; // Ensure module is null on error
+                searchButton.disabled = true;
+                regexErrorDiv.textContent = `Compilation error: ${err.message}`;
+                searchResultDiv.textContent = ""; // Clear result on compilation error
+            });
+    }, 500),
+);
+
+haystackText.addEventListener("input", function (ev) {
+    // Automatically search if a valid regex module exists
+    if (currentModule !== null) {
+        performSearch();
+    } else {
+        searchResultDiv.textContent = ""; // Clear result if no valid regex
+    }
 });
+
+searchButton.addEventListener("click", performSearch);
