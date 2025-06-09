@@ -30,15 +30,14 @@
                 executing it directly. The output WASM module can be passed to a variety of engines, such as the Web
                 platform, <a href="https://wasmtime.dev/" target="_blank">Wasmtime</a>, or <a
                     href="https://github.com/wasmi-labs/wasmi" target="_blank">wasmi</a>.</p>
-            <p>See the WAHGEX <a href="./playground.html" target="_blank">playground</a> for an example application
+            <p>Visit the WAHGEX <a href="./playground.html" target="_blank">playground</a> for an example application
                 which uses the WASM modules to execute regex on an input haystack.</p>
 
-            <p>This project is still a work in progress and there are some missing things:</p>
+            <p>This project is still a work in progress, and several features are currently missing:</p>
             <ul>
-                <li>Unicode support in lookaround assertions</li>
-                <li>Reporting captures or even offsets of overall match within haystack</li>
-                <li>Library integration with specific WASM engines like Wasmtime or wasmi. Currently it is a "build it
-                    yourself" situation.</li>
+                <li>Unicode support in lookaround assertions.</li>
+                <li>Reporting captures or even offsets of the overall match within the haystack.</li>
+                <li>Better library integration with specific WASM engines like Wasmtime or wasmi. Currently, it requires more manual setup.</li>
                 <li>Better optimization of the output WASM code.<sup><a href=" #fn1" id="r1">[1]</a></sup> </li>
                 <li>Benchmarks...</li>
             </ul>
@@ -46,18 +45,17 @@
             <h2>WHY</h2>
             <p>Mostly for fun and for the chance to work with tools that interested me. I've been interested in WASM for
                 a while and have a lingering interest in compilers from my time in college. I also used this project as
-                an opportunity to try out programming using LLMs. That part was a middling success.</p>
+                an opportunity to experiment with programming using LLMs, though that part was a middling success.</p>
 
-            <p>To focus more on the project, there are a couple of advantages and disadvantages. The main advantage of
-                compiling the regular expression come from specializing the internal data structures and
-                layout to the specific regex. The HOW sections covers more in detail of this compilation process.
-                Another advantage is the WASM sandbox. It makes me a lot more confident that I
-                won't cause some sort of vulnerability by reading memory past the end of the haystack.</p>
+            <p>Focusing on the project itself, there are a couple of advantages and disadvantages. The main advantage of
+                compiling the regular expression comes from specializing the internal data structures and
+                layout for the specific regex. The HOW section covers this compilation process in more detail.
+                Another advantage is the WASM sandbox, which provides a strong security boundary. It makes me more confident that I
+                won't inadvertently cause a vulnerability by attempting to read memory beyond the bounds of the haystack.</p>
 
-            <p>The disadvantages are also tied to the WASM sandbox. Specifically, the haystack memory is a problem from
-                a performance perspective. In order for the WASM functions to read the haystack memory, the library
-                outside the WASM engine needs to copy the haystack bytes into the memory instance. Compare this to a
-                normal regex library, which can just take a readonly view of the haystack, no need to copy.</p>
+            <p>The disadvantages are also tied to the WASM sandbox. Specifically, handling the haystack memory poses a performance problem.
+                In order for the WASM functions to read the haystack memory, the embedding application needs to copy the haystack bytes into the WASM memory instance.
+                Compare this to a normal regex library, which can often take a read-only view of the haystack directly, requiring no data copying.</p>
 
             <p>TODO include</p>
             <ul>
@@ -78,9 +76,9 @@
             <p>Internally, the WAHGEX library starts working after it gets an NFA from the <code>regex-automata</code>
                 dependency. That NFA is essentially a list of <a
                     href="https://docs.rs/regex-automata/latest/regex_automata/nfa/thompson/enum.State.html"
-                    target="_blank">states</a> like "Look" (which indicates lookaround assertion), "Union" (an epsilon
-                transition to multiple other states), or "Sparse" (which transitions to another state based on haystack
-                matching) among others. Each state is uniquely identified by its position in the list of states, its
+                    target="_blank">states</a> such as "Look" (indicating a lookaround assertion), "Union" (representing an epsilon
+                transition to multiple other states), or "Sparse" (transitioning to another state based on haystack
+                matching), among others. Each state is uniquely identified by its position in the list of states, referred to as its
                 "state ID".</p>
 
             <p></p>
@@ -97,8 +95,8 @@
             <p id="fn2"><a href="#r2">[2]</a> This is a generalization. If you read the <a
                     href="https://docs.rs/regex-automata/latest/regex_automata/#available-regex-engines"
                     target="_blank">"Available
-                    regex engines" section of regex-automata's docs</a> you'll note that for each regular expression
-                engine, there are lots of caveats such as, “only handles a subset of regexes” or “is generally slow.”
+                    regex engines" section of regex-automata's docs</a>, you'll note that for each regular expression
+                engine, there are many caveats, such as "only handles a subset of regexes" or "is generally slow."
             </p>
         </section>
     </main>
