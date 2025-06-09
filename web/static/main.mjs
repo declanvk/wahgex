@@ -1,4 +1,4 @@
-import init, { compile } from "./pkg/wahgex_web.js";
+import init, { compile } from "./playground/wahgex_web_playground.js";
 
 await init();
 
@@ -118,8 +118,7 @@ function performSearch() {
         !(typeof haystack === "string") ||
         haystack.length === 0
     ) {
-        searchResultDiv.textContent =
-            "Enter text in the haystack area to search.";
+        searchResultDiv.textContent = "";
         return;
     }
 
