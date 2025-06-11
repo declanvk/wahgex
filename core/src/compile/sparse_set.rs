@@ -288,12 +288,15 @@ pub mod tests {
         module.finish()
     }
 
+    type SetContainsFn = wasmi::TypedFunc<(i64, i32, i32), i32>;
+    type SetInsertFn = wasmi::TypedFunc<(i32, i32, i64), i32>;
+
     pub fn get_sparse_set_fns(
         instance: &wasmi::Instance,
         store: &wasmi::Store<()>,
     ) -> (
-        wasmi::TypedFunc<(i64, i32, i32), i32>, // contains: (ptr, len, id) -> bool
-        wasmi::TypedFunc<(i32, i32, i64), i32>, // insert: (len, id, ptr) -> new_len
+        SetContainsFn, // contains: (ptr, len, id) -> bool
+        SetInsertFn,   // insert: (len, id, ptr) -> new_len
     ) {
         let sparse_set_contains = instance
             .get_typed_func::<(i64, i32, i32), i32>(&store, "sparse_set_contains")

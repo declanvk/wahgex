@@ -269,10 +269,7 @@ impl CompileContext {
                     }
                 },
                 None => {
-                    panic!(
-                        "Function at index {} was declared but not defined.",
-                        func_idx_val
-                    );
+                    panic!("Function at index {func_idx_val} was declared but not defined.");
                 },
             }
         }

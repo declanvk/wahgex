@@ -11,7 +11,7 @@ fn main() {
 
     let pretty_wasm = wasm_print_module(regex.get_wasm());
 
-    println!("{}", pretty_wasm);
+    println!("{pretty_wasm}");
 }
 
 fn eprint_input_info(input: &str, regex: &PikeVM) {

@@ -71,7 +71,7 @@ fn run_test(re: &PikeVM, test: &RegexTest) -> TestResult {
     match test.additional_name() {
         "is_match" => run_is_match(re, input)
             .unwrap_or_else(|err| TestResult::fail(format!("{err:?}").as_str())),
-        name => TestResult::fail(&format!("unrecognized test name: {}", name)),
+        name => TestResult::fail(&format!("unrecognized test name: {name}")),
     }
 }
 
