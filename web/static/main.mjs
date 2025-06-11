@@ -122,15 +122,14 @@ assert(searchResultDiv !== null, "expected search result present");
 const statsOutputDiv = document.getElementById("statsOutput");
 assert(statsOutputDiv !== null, "expected stats output present");
 
-// Add a div for share feedback
 const shareRegexOutput = document.getElementById("shareRegex");
-assert(statsOutputDiv !== null, "expected share feedback output present");
+assert(statsOutputDiv !== null, "expected share regex output present");
 
 function clearMessages() {
     regexErrorDiv.textContent = "";
     searchResultDiv.textContent = "";
-    statsOutputDiv.textContent = ""; // Clear stats
-    shareRegexOutput.textContent = ""; // Clear share feedback
+    statsOutputDiv.textContent = "";
+    shareRegexOutput.textContent = "";
 }
 
 // Helper function to toggle button states and clear module data
@@ -138,9 +137,9 @@ function resetModuleState() {
     currentModule = null;
     searchButton.disabled = true;
     downloadWasmButton.disabled = true;
-    shareRegexButton.disabled = true; // Disable share button
-    statsOutputDiv.textContent = ""; // Clear stats on reset
-    shareRegexOutput.textContent = ""; // Clear share feedback
+    shareRegexButton.disabled = true;
+    statsOutputDiv.textContent = "";
+    shareRegexOutput.textContent = "";
 }
 
 function performSearch() {
@@ -226,7 +225,7 @@ shareRegexButton.addEventListener("click", async function () {
         // Get current URL parameters
         const urlParams = new URLSearchParams(window.location.search);
         // Set or update the 'regex' parameter
-        urlParams.set('regex', encodedPattern);
+        urlParams.set("regex", encodedPattern);
         // Construct the new share URL with preserved parameters
         const shareUrl = `${window.location.origin}${window.location.pathname}?${urlParams.toString()}`;
 
