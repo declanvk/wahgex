@@ -85,9 +85,16 @@ function assert(condition, message) {
 }
 
 let currentModule = null;
+let currentModuleBytes = null;
 
 const searchButton = document.getElementById("searchButton");
 assert(searchButton !== null, "expected search button element present");
+
+const downloadWasmButton = document.getElementById("downloadWasmButton");
+assert(
+    downloadWasmButton !== null,
+    "expected download WASM button element present",
+);
 
 const regexInput = document.getElementById("regexInput");
 assert(regexInput !== null, "expected regex input element present");
@@ -106,6 +113,13 @@ function clearMessages() {
     searchResultDiv.textContent = "";
 }
 
+// Helper function to toggle button states and clear module data
+function resetModuleState() {
+    currentModule = null;
+    searchButton.disabled = true;
+    downloadWasmButton.disabled = true;
+}
+
 function performSearch() {
     searchResultDiv.textContent = "";
     if (currentModule === null) {
@@ -113,11 +127,7 @@ function performSearch() {
     }
 
     const haystack = haystackText.value;
-    if (
-        haystack === null ||
-        !(typeof haystack === "string") ||
-        haystack.length === 0
-    ) {
+    if (haystack === null || !(typeof haystack === "string")) {
         searchResultDiv.textContent = "";
         return;
     }
@@ -136,8 +146,7 @@ regexInput.addEventListener(
             !(typeof value === "string") ||
             value.length === 0
         ) {
-            currentModule = null;
-            searchButton.disabled = true;
+            resetModuleState();
             searchResultDiv.textContent = ""; // Clear result when regex is cleared
             return;
         }
@@ -146,19 +155,47 @@ regexInput.addEventListener(
             .then((module) => {
                 currentModule = module;
                 searchButton.disabled = false;
+                downloadWasmButton.disabled = false;
                 // Automatically search if haystack is not empty after successful compilation
                 if (haystackText.value.length > 0) {
                     performSearch();
                 }
             })
             .catch((err) => {
-                currentModule = null; // Ensure module is null on error
-                searchButton.disabled = true;
+                resetModuleState();
                 regexErrorDiv.textContent = `Compilation error: ${err.message}`;
                 searchResultDiv.textContent = ""; // Clear result on compilation error
             });
     }, 500),
 );
+
+downloadWasmButton.addEventListener("click", async function () {
+    if (currentModule && currentModule.moduleBytes && currentModule.pattern) {
+        const blob = new Blob([currentModule.moduleBytes], {
+            type: "application/wasm",
+        });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+
+        // Generate hash of the regex pattern for the filename
+        const pattern = currentModule.pattern;
+        const encoder = new TextEncoder();
+        const data = encoder.encode(pattern);
+        const hashBuffer = await crypto.subtle.digest("SHA-1", data);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        const hashHex = hashArray
+            .map((b) => b.toString(16).padStart(2, "0"))
+            .join("");
+
+        a.download = `regex-${hashHex}.wasm`;
+
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+});
 
 haystackText.addEventListener("input", function (ev) {
     // Automatically search if a valid regex module exists
