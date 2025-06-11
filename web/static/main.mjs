@@ -29,9 +29,10 @@ class RegexModule {
             return null;
         }
 
-        let moduleBytes;
+        let compileResult;
         try {
-            moduleBytes = compile(pattern);
+            // The compile function now returns the CompileResult object
+            compileResult = compile(pattern);
         } catch (err) {
             if (typeof err === "string") {
                 throw Error(err);
@@ -39,14 +40,18 @@ class RegexModule {
                 throw err;
             }
         }
+
+        // Extract the wasm_bytes from the CompileResult
+        const moduleBytes = compileResult.wasm_bytes;
         const { module, instance } = await WebAssembly.instantiate(moduleBytes);
 
-        return new RegexModule(pattern, moduleBytes, module, instance);
+        // Pass the compileResult object to the constructor
+        return new RegexModule(pattern, compileResult, module, instance);
     }
 
-    constructor(pattern, moduleBytes, module, instance) {
+    constructor(pattern, compileResult, module, instance) {
         this.pattern = pattern;
-        this.moduleBytes = moduleBytes;
+        this.compileResult = compileResult;
         this.module = module;
         this.instance = instance;
         this.encoder = new TextEncoder("utf-8");
@@ -85,7 +90,6 @@ function assert(condition, message) {
 }
 
 let currentModule = null;
-let currentModuleBytes = null;
 
 const searchButton = document.getElementById("searchButton");
 assert(searchButton !== null, "expected search button element present");
@@ -108,9 +112,14 @@ assert(regexErrorDiv !== null, "expected regex error div present");
 const searchResultDiv = document.getElementById("searchResult");
 assert(searchResultDiv !== null, "expected search result div present");
 
+// Get the new div for statistics
+const statsOutputDiv = document.getElementById("statsOutput");
+assert(statsOutputDiv !== null, "expected stats output div present");
+
 function clearMessages() {
     regexErrorDiv.textContent = "";
     searchResultDiv.textContent = "";
+    statsOutputDiv.textContent = ""; // Clear stats
 }
 
 // Helper function to toggle button states and clear module data
@@ -118,6 +127,7 @@ function resetModuleState() {
     currentModule = null;
     searchButton.disabled = true;
     downloadWasmButton.disabled = true;
+    statsOutputDiv.textContent = ""; // Clear stats on reset
 }
 
 function performSearch() {
@@ -136,6 +146,28 @@ function performSearch() {
     searchResultDiv.textContent = result ? "Match found!" : "No match found.";
 }
 
+// New function to display statistics
+function displayStats(compileResult) {
+    if (!compileResult) {
+        statsOutputDiv.textContent = "";
+        return;
+    }
+
+    let statsHtml = "<h2>WASM Module Statistics</h2><ul>";
+    statsHtml += `<li><strong>Module size:</strong> ${compileResult.module_size} bytes</li>`;
+    statsHtml += `<li><strong>States:</strong> ${compileResult.states}</li>`;
+    statsHtml += `<li><strong>Pattern length:</strong> ${compileResult.pattern_len}</li>`;
+    statsHtml += `<li><strong>Has capture:</strong> ${compileResult.has_capture}</li>`;
+    statsHtml += `<li><strong>Has empty:</strong> ${compileResult.has_empty}</li>`;
+    statsHtml += `<li><strong>Is UTF8:</strong> ${compileResult.is_utf8}</li>`;
+    statsHtml += `<li><strong>Is reverse:</strong> ${compileResult.is_reverse}</li>`;
+    statsHtml += `<li><strong>Lookahead any:</strong> ${compileResult.lookset_any}</li>`;
+    statsHtml += `<li><strong>Lookahead prefix any:</strong> ${compileResult.lookset_prefix_any}</li>`;
+    statsHtml += "</ul>";
+
+    statsOutputDiv.innerHTML = statsHtml;
+}
+
 regexInput.addEventListener(
     "input",
     debounce(function (ev) {
@@ -147,7 +179,7 @@ regexInput.addEventListener(
             value.length === 0
         ) {
             resetModuleState();
-            searchResultDiv.textContent = ""; // Clear result when regex is cleared
+            clearMessages();
             return;
         }
 
@@ -156,6 +188,8 @@ regexInput.addEventListener(
                 currentModule = module;
                 searchButton.disabled = false;
                 downloadWasmButton.disabled = false;
+                displayStats(currentModule.compileResult); // Display stats after successful compilation
+
                 // Automatically search if haystack is not empty after successful compilation
                 if (haystackText.value.length > 0) {
                     performSearch();
@@ -163,15 +197,15 @@ regexInput.addEventListener(
             })
             .catch((err) => {
                 resetModuleState();
+                clearMessages();
                 regexErrorDiv.textContent = `Compilation error: ${err.message}`;
-                searchResultDiv.textContent = ""; // Clear result on compilation error
             });
     }, 500),
 );
 
 downloadWasmButton.addEventListener("click", async function () {
-    if (currentModule && currentModule.moduleBytes && currentModule.pattern) {
-        const blob = new Blob([currentModule.moduleBytes], {
+    if (currentModule && currentModule.compileResult && currentModule.pattern) {
+        const blob = new Blob([currentModule.compileResult.wasm_bytes], {
             type: "application/wasm",
         });
         const url = URL.createObjectURL(blob);
