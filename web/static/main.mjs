@@ -100,6 +100,12 @@ assert(
     "expected download WASM button element present",
 );
 
+const shareRegexButton = document.getElementById("shareRegexButton"); // Get share button
+assert(
+    shareRegexButton !== null,
+    "expected share regex button element present",
+);
+
 const regexInput = document.getElementById("regexInput");
 assert(regexInput !== null, "expected regex input element present");
 
@@ -107,19 +113,24 @@ const haystackText = document.getElementById("haystackText");
 assert(haystackText !== null, "expected haystack text area element present");
 
 const regexErrorDiv = document.getElementById("regexError");
-assert(regexErrorDiv !== null, "expected regex error div present");
+assert(regexErrorDiv !== null, "expected regex error present");
 
 const searchResultDiv = document.getElementById("searchResult");
-assert(searchResultDiv !== null, "expected search result div present");
+assert(searchResultDiv !== null, "expected search result present");
 
 // Get the new div for statistics
 const statsOutputDiv = document.getElementById("statsOutput");
-assert(statsOutputDiv !== null, "expected stats output div present");
+assert(statsOutputDiv !== null, "expected stats output present");
+
+// Add a div for share feedback
+const shareFeedbackDiv = document.getElementById("shareFeedback");
+assert(statsOutputDiv !== null, "expected share feedback output present");
 
 function clearMessages() {
     regexErrorDiv.textContent = "";
     searchResultDiv.textContent = "";
     statsOutputDiv.textContent = ""; // Clear stats
+    shareFeedbackDiv.textContent = ""; // Clear share feedback
 }
 
 // Helper function to toggle button states and clear module data
@@ -127,7 +138,9 @@ function resetModuleState() {
     currentModule = null;
     searchButton.disabled = true;
     downloadWasmButton.disabled = true;
+    shareRegexButton.disabled = true; // Disable share button
     statsOutputDiv.textContent = ""; // Clear stats on reset
+    shareFeedbackDiv.textContent = ""; // Clear share feedback
 }
 
 function performSearch() {
@@ -168,40 +181,59 @@ function displayStats(compileResult) {
     statsOutputDiv.innerHTML = statsHtml;
 }
 
+// Refactored function to process regex input
+function processRegexInput(value) {
+    clearMessages();
+    if (value === null || !(typeof value === "string") || value.length === 0) {
+        resetModuleState();
+        clearMessages();
+        return;
+    }
+
+    RegexModule.create(value)
+        .then((module) => {
+            currentModule = module;
+            searchButton.disabled = false;
+            downloadWasmButton.disabled = false;
+            shareRegexButton.disabled = false; // Enable share button
+            displayStats(currentModule.compileResult); // Display stats after successful compilation
+
+            // Automatically search if haystack is not empty after successful compilation
+            if (haystackText.value.length > 0) {
+                performSearch();
+            }
+        })
+        .catch((err) => {
+            resetModuleState();
+            clearMessages();
+            regexErrorDiv.textContent = `Compilation error: ${err.message}`;
+        });
+}
+
+// Event listener for the regex input field (now calls the refactored function)
 regexInput.addEventListener(
     "input",
     debounce(function (ev) {
-        clearMessages();
-        const value = regexInput.value;
-        if (
-            value === null ||
-            !(typeof value === "string") ||
-            value.length === 0
-        ) {
-            resetModuleState();
-            clearMessages();
-            return;
-        }
-
-        RegexModule.create(value)
-            .then((module) => {
-                currentModule = module;
-                searchButton.disabled = false;
-                downloadWasmButton.disabled = false;
-                displayStats(currentModule.compileResult); // Display stats after successful compilation
-
-                // Automatically search if haystack is not empty after successful compilation
-                if (haystackText.value.length > 0) {
-                    performSearch();
-                }
-            })
-            .catch((err) => {
-                resetModuleState();
-                clearMessages();
-                regexErrorDiv.textContent = `Compilation error: ${err.message}`;
-            });
+        processRegexInput(regexInput.value);
     }, 500),
 );
+
+// Event listener for the share button
+shareRegexButton.addEventListener("click", async function () {
+    if (currentModule && currentModule.pattern) {
+        const pattern = currentModule.pattern;
+        const encodedPattern = encodeURIComponent(pattern);
+        const shareUrl = `${window.location.origin}${window.location.pathname}?regex=${encodedPattern}`;
+
+        try {
+            await navigator.clipboard.writeText(shareUrl);
+        } catch (err) {
+            shareFeedbackDiv.textContent = "Failed to copy link.";
+            shareFeedbackDiv.style.color = "red";
+            console.error("Failed to copy: ", err);
+        }
+    }
+});
 
 downloadWasmButton.addEventListener("click", async function () {
     if (currentModule && currentModule.compileResult && currentModule.pattern) {
@@ -232,12 +264,25 @@ downloadWasmButton.addEventListener("click", async function () {
 });
 
 haystackText.addEventListener("input", function (ev) {
-    // Automatically search if a valid regex module exists
     if (currentModule !== null) {
         performSearch();
     } else {
-        searchResultDiv.textContent = ""; // Clear result if no valid regex
+        searchResultDiv.textContent = "";
     }
 });
 
 searchButton.addEventListener("click", performSearch);
+
+const urlParams = new URLSearchParams(window.location.search);
+const regexFromUrl = urlParams.get("regex");
+
+if (regexFromUrl) {
+    try {
+        const decodedRegex = decodeURIComponent(regexFromUrl);
+        regexInput.value = decodedRegex;
+        processRegexInput(decodedRegex);
+    } catch (e) {
+        console.error("Failed to decode or process regex from URL:", e);
+        regexErrorDiv.textContent = `Error loading regex from URL: Invalid format.`;
+    }
+}

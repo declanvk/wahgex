@@ -31,26 +31,37 @@
 
         <main>
             <form id="playgroundForm" onsubmit="return false;">
-                <label for="regexInput">Regular expression</label>
+                <label for="regexInput">
+                    Regular expression (<a
+                        href="https://docs.rs/regex/latest/regex/#syntax"
+                        target="_blank"
+                        >Syntax</a
+                    >)
+                </label>
                 <input
                     placeholder="Enter regular expression to compile."
                     id="regexInput"
                     type="text"
                     autocomplete="off"
                 />
-                <div id="regexError"></div>
-
+                <output id="regexError" for="regexInput"></output>
+                <br />
                 <label for="haystackText">Haystack</label>
                 <button id="searchButton" disabled>Search</button>
                 <button id="downloadWasmButton" disabled>
                     Download WASM Module
                 </button>
+                <button id="shareRegexButton" disabled>Share</button>
+                <output id="shareFeedback" for="shareRegexButton"></output>
                 <textarea
                     placeholder="Enter text in the haystack area to search."
                     id="haystackText"
                     autocomplete="off"
                 ></textarea>
-                <div id="searchResult"></div>
+                <output
+                    id="searchResult"
+                    for="regexInput haystackText"
+                ></output>
                 <output id="statsOutput" for="regexInput"></output>
             </form>
         </main>
