@@ -8,4 +8,7 @@ DIST_FOLDER="${SCRIPT_FOLDER}/dist"
 wasm-pack build "${SCRIPT_FOLDER}/playground" --target web --out-dir "${DIST_FOLDER}/playground"
 
 # Copy static files
-cp -R ${SCRIPT_FOLDER}/static/* "${DIST_FOLDER}"
+rsync --recursive "${SCRIPT_FOLDER}/static/" "${DIST_FOLDER}"
+
+# Copy rustdoc documentation to dist/rustdoc
+rsync --recursive "${SCRIPT_FOLDER}/../target/doc/" "${DIST_FOLDER}/docs"

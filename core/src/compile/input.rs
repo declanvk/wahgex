@@ -503,8 +503,7 @@ impl InputFunctions {
     }
 }
 
-/// This enum represents the results of the
-/// [`prepare_input`][InputFunctions::prepare_input_fn] function.
+/// This enum represents the results of the `prepare_input` function.
 #[derive(Debug)]
 pub enum PrepareInputResult {
     /// Indicates that the input preparation was successful and no memory growth

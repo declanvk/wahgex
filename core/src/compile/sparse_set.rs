@@ -55,7 +55,7 @@ pub struct SparseSetLayout {
 }
 
 impl SparseSetLayout {
-    /// Create a new sparse set layout for the given [`NFA`].
+    /// Create a new sparse set layout for the given `NFA`.
     ///
     /// The sparse set will be scaled to the number of states in the NFA.
     pub fn new(ctx: &mut CompileContext, overall: Layout) -> Result<(Layout, Self), LayoutError> {

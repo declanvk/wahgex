@@ -1,0 +1,107 @@
+<!doctype html>
+<html>
+    <head>
+        <meta content="text/html;charset=utf-8" http-equiv="Content-Type" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta charset="UTF-8" />
+        <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+        <link rel="stylesheet" href="./style.css" />
+
+        <title>WAHGEX - compiled regular expressions</title>
+    </head>
+
+    <body>
+        <header>
+            <nav>
+                <ul>
+                    <li><a href="./index.html">Playground</a></li>
+                    <li><a href="./docs.html">Docs</a></li>
+                    <li><a href="./about.html">About</a></li>
+                    <li>
+                        <a
+                            href="https://github.com/declanvk/wahgex"
+                            target="_blank"
+                            >Github</a
+                        >
+                    </li>
+                </ul>
+            </nav>
+            <h1>WAHGEX - Compiled regular expressions</h1>
+        </header>
+
+        <main>
+            <article>
+                <h2>WHAT</h2>
+                <p>
+                    WAHGEX is a regular expression engine that compiles the
+                    regex into a WebAssembly (WASM) module instead of executing
+                    it directly. The output WASM module can be passed to a
+                    variety of engines, such as the Web platform,
+                    <a href="https://wasmtime.dev/" target="_blank">Wasmtime</a
+                    >, or
+                    <a
+                        href="https://github.com/wasmi-labs/wasmi"
+                        target="_blank"
+                        >wasmi</a
+                    >.
+                </p>
+                <p>
+                    Visit the WAHGEX
+                    <a href="./playground.html" target="_blank">playground</a>
+                    for an example application which uses the WASM modules to
+                    execute regex on an input haystack.
+                </p>
+
+                <p>
+                    This project is still a work in progress, and several
+                    features are currently missing:
+                </p>
+                <ul>
+                    <li>Unicode support in lookaround assertions.</li>
+                    <li>
+                        Reporting captures or even offsets of the overall match
+                        within the haystack.
+                    </li>
+                    <li>
+                        Better library integration with specific WASM engines
+                        like Wasmtime or wasmi. Currently, it requires more
+                        manual setup.
+                    </li>
+                    <li>
+                        Better optimization of the output WASM code.<sup
+                            ><a href=" #fn1" id="r1">[1]</a></sup
+                        >
+                    </li>
+                    <li>Benchmarks...</li>
+                </ul>
+
+                <h2>WHY</h2>
+                <p>
+                    Mostly for fun and for the chance to work with tools that
+                    interested me. I've been interested in WASM for a while and
+                    have a lingering interest in compilers from my time in
+                    college. I also used this project as an opportunity to
+                    experiment with programming using LLMs, though that part was
+                    a middling success.
+                </p>
+            </article>
+            <section>
+                <p id="fn1">
+                    <a href="#r1">[1]</a> WASM engines have a different profile
+                    of optimization passes (if any), since they might assume
+                    that their input WASM module has come from another
+                    optimizing compiler like LLVM, or at least passed through an
+                    optimizer like <code>wasm-opt</code>. See
+                    <a
+                        href="https://github.com/bytecodealliance/wasmtime/issues/4712"
+                        target="_blank"
+                        ><code>wasmtime#4712</code></a
+                    >
+                    for some discussion about which optimization passes are
+                    present in Wasmtime and which ones are present in the
+                    expected upstream.
+                </p>
+            </section>
+        </main>
+    </body>
+</html>

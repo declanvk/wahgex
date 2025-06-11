@@ -33,7 +33,7 @@ impl LookLayout {
     /// This lookup table is true for bytes which are considered "word" unicode
     /// characters.
     ///
-    /// The logic is copied directly from https://github.com/rust-lang/regex/blob/master/regex-automata/src/util/utf8.rs#L17-L37
+    /// The logic is copied directly from <https://github.com/rust-lang/regex/blob/master/regex-automata/src/util/utf8.rs#L17-L37>
     /// As the comment on the function (in the link) mentions, no bit-rot
     /// because this will not change.
     const UTF8_IS_WORD_BYTE_LUT: [bool; 256] = {
