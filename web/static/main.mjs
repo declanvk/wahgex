@@ -123,14 +123,14 @@ const statsOutputDiv = document.getElementById("statsOutput");
 assert(statsOutputDiv !== null, "expected stats output present");
 
 // Add a div for share feedback
-const shareFeedbackDiv = document.getElementById("shareFeedback");
+const shareRegexOutput = document.getElementById("shareRegex");
 assert(statsOutputDiv !== null, "expected share feedback output present");
 
 function clearMessages() {
     regexErrorDiv.textContent = "";
     searchResultDiv.textContent = "";
     statsOutputDiv.textContent = ""; // Clear stats
-    shareFeedbackDiv.textContent = ""; // Clear share feedback
+    shareRegexOutput.textContent = ""; // Clear share feedback
 }
 
 // Helper function to toggle button states and clear module data
@@ -140,7 +140,7 @@ function resetModuleState() {
     downloadWasmButton.disabled = true;
     shareRegexButton.disabled = true; // Disable share button
     statsOutputDiv.textContent = ""; // Clear stats on reset
-    shareFeedbackDiv.textContent = ""; // Clear share feedback
+    shareRegexOutput.textContent = ""; // Clear share feedback
 }
 
 function performSearch() {
@@ -223,13 +223,19 @@ shareRegexButton.addEventListener("click", async function () {
     if (currentModule && currentModule.pattern) {
         const pattern = currentModule.pattern;
         const encodedPattern = encodeURIComponent(pattern);
-        const shareUrl = `${window.location.origin}${window.location.pathname}?regex=${encodedPattern}`;
+        // Get current URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        // Set or update the 'regex' parameter
+        urlParams.set('regex', encodedPattern);
+        // Construct the new share URL with preserved parameters
+        const shareUrl = `${window.location.origin}${window.location.pathname}?${urlParams.toString()}`;
 
         try {
             await navigator.clipboard.writeText(shareUrl);
+            shareRegexOutput.textContent = "Copied link to clipboard!";
         } catch (err) {
-            shareFeedbackDiv.textContent = "Failed to copy link.";
-            shareFeedbackDiv.style.color = "red";
+            shareRegexOutput.textContent = "Failed to copy link.";
+            shareRegexOutput.style.color = "red";
             console.error("Failed to copy: ", err);
         }
     }

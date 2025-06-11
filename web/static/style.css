@@ -49,21 +49,23 @@ main {
     }
 }
 
-/* Rules for playground elements */
+#playgroundForm {
+    display: flex;
+    flex-direction: column;
+}
 
 #haystackText {
-    width: 100%;
+    width: 90%;
 }
 
-#regexText {
-    width: 100%;
+#regexInput {
+    width: 90%;
 }
 
-/* This styles the error box that accompanies the regex input */
 #regexError {
     color: red;
 }
 
-#shareFeedback {
+#shareRegex {
     color: green;
 }
