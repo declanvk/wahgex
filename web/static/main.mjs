@@ -160,24 +160,40 @@ function performSearch() {
 
 // New function to display statistics
 function displayStats(compileResult) {
+    // Clear previous content
+    statsOutputDiv.innerHTML = "";
+
     if (!compileResult) {
-        statsOutputDiv.textContent = "";
         return;
     }
 
-    let statsHtml = "<h2>WASM Module Statistics</h2><ul>";
-    statsHtml += `<li><strong>Module size:</strong> ${compileResult.module_size} bytes</li>`;
-    statsHtml += `<li><strong>States:</strong> ${compileResult.states}</li>`;
-    statsHtml += `<li><strong>Pattern length:</strong> ${compileResult.pattern_len}</li>`;
-    statsHtml += `<li><strong>Has capture:</strong> ${compileResult.has_capture}</li>`;
-    statsHtml += `<li><strong>Has empty:</strong> ${compileResult.has_empty}</li>`;
-    statsHtml += `<li><strong>Is UTF8:</strong> ${compileResult.is_utf8}</li>`;
-    statsHtml += `<li><strong>Is reverse:</strong> ${compileResult.is_reverse}</li>`;
-    statsHtml += `<li><strong>Lookahead any:</strong> ${compileResult.lookset_any}</li>`;
-    statsHtml += `<li><strong>Lookahead prefix any:</strong> ${compileResult.lookset_prefix_any}</li>`;
-    statsHtml += "</ul>";
+    const detailsElement = document.createElement("details");
+    const summaryElement = document.createElement("summary");
+    summaryElement.textContent = "WASM Module Statistics";
+    detailsElement.appendChild(summaryElement);
 
-    statsOutputDiv.innerHTML = statsHtml;
+    const ulElement = document.createElement("ul");
+
+    // Function to create list item
+    const createStatItem = (label, value) => {
+        const li = document.createElement("li");
+        li.innerHTML = `<strong>${label}:</strong> ${value}`;
+        return li;
+    };
+
+    ulElement.appendChild(createStatItem("Module size", `${compileResult.module_size} bytes`));
+    ulElement.appendChild(createStatItem("States", compileResult.states));
+    ulElement.appendChild(createStatItem("Pattern length", compileResult.pattern_len));
+    ulElement.appendChild(createStatItem("Has capture", compileResult.has_capture));
+    ulElement.appendChild(createStatItem("Has empty", compileResult.has_empty));
+    ulElement.appendChild(createStatItem("Is UTF8", compileResult.is_utf8));
+    ulElement.appendChild(createStatItem("Is reverse", compileResult.is_reverse));
+    ulElement.appendChild(createStatItem("Lookahead any", compileResult.lookset_any));
+    ulElement.appendChild(createStatItem("Lookahead prefix any", compileResult.lookset_prefix_any));
+
+
+    detailsElement.appendChild(ulElement);
+    statsOutputDiv.appendChild(detailsElement);
 }
 
 // Refactored function to process regex input
