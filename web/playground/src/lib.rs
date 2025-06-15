@@ -1,5 +1,6 @@
-use wahgex_core::Builder; // Import PikeVM to access NFA and get_wasm
+use wahgex_core::Builder;
 use wasm_bindgen::prelude::*;
+use wasmprinter::print_bytes;
 
 #[wasm_bindgen]
 pub struct CompileResult {
@@ -11,8 +12,9 @@ pub struct CompileResult {
     has_empty: bool,
     is_utf8: bool,
     is_reverse: bool,
-    lookset_any: String,        // Represent as string for simplicity
-    lookset_prefix_any: String, // Represent as string for simplicity
+    lookset_any: String,
+    lookset_prefix_any: String,
+    wat_string: String,
 }
 
 #[wasm_bindgen]
@@ -21,11 +23,14 @@ pub fn compile(regex: String) -> Result<CompileResult, String> {
         .build(&regex)
         .map_err(|err| err.to_string())?;
 
+    let wasm_bytes = regex_vm.get_wasm();
+    let wat_string = print_bytes(&wasm_bytes).map_err(|err| err.to_string())?;
+
     let nfa = regex_vm.get_nfa();
 
     let result = CompileResult {
-        wasm_bytes: regex_vm.get_wasm().into(), // Convert Vec<u8> to Box<[u8]>
-        module_size: regex_vm.get_wasm().len(),
+        wasm_bytes: wasm_bytes.into(),
+        module_size: wasm_bytes.len(),
         states: nfa.states().len(),
         pattern_len: nfa.pattern_len(),
         has_capture: nfa.has_capture(),
@@ -34,6 +39,7 @@ pub fn compile(regex: String) -> Result<CompileResult, String> {
         is_reverse: nfa.is_reverse(),
         lookset_any: format!("{:?}", nfa.look_set_any()),
         lookset_prefix_any: format!("{:?}", nfa.look_set_prefix_any()),
+        wat_string,
     };
 
     Ok(result)
@@ -89,5 +95,10 @@ impl CompileResult {
     #[wasm_bindgen(getter)]
     pub fn lookset_prefix_any(&self) -> String {
         self.lookset_prefix_any.clone()
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn wat_string(&self) -> String {
+        self.wat_string.clone()
     }
 }

@@ -83,52 +83,36 @@ class RegexModule {
     }
 }
 
-function assert(condition, message) {
-    if (!condition) {
-        throw new Error(message || "Assertion failed");
+function getElementById(id) {
+    const element = document.getElementById(id);
+    if (element === null) {
+        throw new Error(`Expected element with id [${id}] to be present`);
     }
+    return element;
 }
 
 let currentModule = null;
 
-const searchButton = document.getElementById("searchButton");
-assert(searchButton !== null, "expected search button element present");
-
-const downloadWasmButton = document.getElementById("downloadWasmButton");
-assert(
-    downloadWasmButton !== null,
-    "expected download WASM button element present",
-);
-
-const shareRegexButton = document.getElementById("shareRegexButton"); // Get share button
-assert(
-    shareRegexButton !== null,
-    "expected share regex button element present",
-);
-
-const regexInput = document.getElementById("regexInput");
-assert(regexInput !== null, "expected regex input element present");
-
-const haystackText = document.getElementById("haystackText");
-assert(haystackText !== null, "expected haystack text area element present");
-
-const regexErrorDiv = document.getElementById("regexError");
-assert(regexErrorDiv !== null, "expected regex error present");
-
-const searchResultDiv = document.getElementById("searchResult");
-assert(searchResultDiv !== null, "expected search result present");
-
-// Get the new div for statistics
-const statsOutputDiv = document.getElementById("statsOutput");
-assert(statsOutputDiv !== null, "expected stats output present");
-
-const shareRegexOutput = document.getElementById("shareRegex");
-assert(statsOutputDiv !== null, "expected share regex output present");
+const searchButton = getElementById("searchButton");
+const downloadWasmButton = getElementById("downloadWasmButton");
+const shareRegexButton = getElementById("shareRegexButton");
+const regexInput = getElementById("regexInput");
+const haystackText = getElementById("haystackText");
+const regexErrorOutput = getElementById("regexError");
+const searchResultOutput = getElementById("searchResult");
+const statsOutput = getElementById("statsOutput");
+const statsOutputList = getElementById("statsOutputList");
+const watOutput = getElementById("watOutput");
+const watOutputPre = getElementById("watOutputPre");
+const shareRegexOutput = getElementById("shareRegex");
 
 function clearMessages() {
-    regexErrorDiv.textContent = "";
-    searchResultDiv.textContent = "";
-    statsOutputDiv.textContent = "";
+    regexErrorOutput.textContent = "";
+    searchResultOutput.textContent = "";
+    statsOutput.style.display = "none";
+    statsOutputList.innerHTML = "";
+    watOutput.style.display = "none";
+    watOutputPre.textContent = "";
     shareRegexOutput.textContent = "";
 }
 
@@ -138,65 +122,93 @@ function resetModuleState() {
     searchButton.disabled = true;
     downloadWasmButton.disabled = true;
     shareRegexButton.disabled = true;
-    statsOutputDiv.textContent = "";
+    statsOutput.style.display = "none";
+    statsOutputList.innerHTML = "";
+    watOutput.style.display = "none";
+    watOutputPre.textContent = "";
     shareRegexOutput.textContent = "";
 }
 
 function performSearch() {
-    searchResultDiv.textContent = "";
+    searchResultOutput.textContent = "";
     if (currentModule === null) {
         return;
     }
 
     const haystack = haystackText.value;
     if (haystack === null || !(typeof haystack === "string")) {
-        searchResultDiv.textContent = "";
+        searchResultOutput.textContent = "";
         return;
     }
 
     const result = currentModule.isMatch(haystack);
-    searchResultDiv.textContent = result ? "Match found!" : "No match found.";
+    searchResultOutput.textContent = result
+        ? "Match found!"
+        : "No match found.";
 }
 
-// New function to display statistics
 function displayStats(compileResult) {
     // Clear previous content
-    statsOutputDiv.innerHTML = "";
+    statsOutputList.innerHTML = "";
+    statsOutput.style.display = "none";
 
     if (!compileResult) {
         return;
     }
 
-    const detailsElement = document.createElement("details");
-    const summaryElement = document.createElement("summary");
-    summaryElement.textContent = "WASM Module Statistics";
-    detailsElement.appendChild(summaryElement);
+    // Undo the `display: none;` style override
+    statsOutput.style.display = "";
 
-    const ulElement = document.createElement("ul");
-
-    // Function to create list item
     const createStatItem = (label, value) => {
         const li = document.createElement("li");
         li.innerHTML = `<strong>${label}:</strong> ${value}`;
         return li;
     };
 
-    ulElement.appendChild(createStatItem("Module size", `${compileResult.module_size} bytes`));
-    ulElement.appendChild(createStatItem("States", compileResult.states));
-    ulElement.appendChild(createStatItem("Pattern length", compileResult.pattern_len));
-    ulElement.appendChild(createStatItem("Has capture", compileResult.has_capture));
-    ulElement.appendChild(createStatItem("Has empty", compileResult.has_empty));
-    ulElement.appendChild(createStatItem("Is UTF8", compileResult.is_utf8));
-    ulElement.appendChild(createStatItem("Is reverse", compileResult.is_reverse));
-    ulElement.appendChild(createStatItem("Lookahead any", compileResult.lookset_any));
-    ulElement.appendChild(createStatItem("Lookahead prefix any", compileResult.lookset_prefix_any));
-
-
-    detailsElement.appendChild(ulElement);
-    statsOutputDiv.appendChild(detailsElement);
+    statsOutputList.appendChild(
+        createStatItem("Module size", `${compileResult.module_size} bytes`),
+    );
+    statsOutputList.appendChild(createStatItem("States", compileResult.states));
+    statsOutputList.appendChild(
+        createStatItem("Pattern length", compileResult.pattern_len),
+    );
+    statsOutputList.appendChild(
+        createStatItem("Has capture", compileResult.has_capture),
+    );
+    statsOutputList.appendChild(
+        createStatItem("Has empty", compileResult.has_empty),
+    );
+    statsOutputList.appendChild(
+        createStatItem("Is UTF8", compileResult.is_utf8),
+    );
+    statsOutputList.appendChild(
+        createStatItem("Is reverse", compileResult.is_reverse),
+    );
+    statsOutputList.appendChild(
+        createStatItem("Lookahead any", compileResult.lookset_any),
+    );
+    statsOutputList.appendChild(
+        createStatItem(
+            "Lookahead prefix any",
+            compileResult.lookset_prefix_any,
+        ),
+    );
 }
 
-// Refactored function to process regex input
+function displayWat(compileResult) {
+    // Clear previous content
+    watOutputPre.textContent = "";
+    watOutput.style.display = "none"; // Hide by default
+
+    if (!compileResult) {
+        return;
+    }
+
+    // Undo the `display: none;` style override
+    watOutput.style.display = "";
+    watOutputPre.textContent = compileResult.wat_string;
+}
+
 function processRegexInput(value) {
     clearMessages();
     if (value === null || !(typeof value === "string") || value.length === 0) {
@@ -210,8 +222,9 @@ function processRegexInput(value) {
             currentModule = module;
             searchButton.disabled = false;
             downloadWasmButton.disabled = false;
-            shareRegexButton.disabled = false; // Enable share button
+            shareRegexButton.disabled = false;
             displayStats(currentModule.compileResult); // Display stats after successful compilation
+            displayWat(currentModule.compileResult); // Display WAT (placeholder) after successful compilation
 
             // Automatically search if haystack is not empty after successful compilation
             if (haystackText.value.length > 0) {
@@ -221,11 +234,11 @@ function processRegexInput(value) {
         .catch((err) => {
             resetModuleState();
             clearMessages();
-            regexErrorDiv.textContent = `Compilation error: ${err.message}`;
+            regexErrorOutput.textContent = `Compilation error: ${err.message}`;
         });
 }
 
-// Event listener for the regex input field (now calls the refactored function)
+// Event listener for the regex input field
 regexInput.addEventListener(
     "input",
     debounce(function (ev) {
@@ -238,11 +251,8 @@ shareRegexButton.addEventListener("click", async function () {
     if (currentModule && currentModule.pattern) {
         const pattern = currentModule.pattern;
         const encodedPattern = encodeURIComponent(pattern);
-        // Get current URL parameters
         const urlParams = new URLSearchParams(window.location.search);
-        // Set or update the 'regex' parameter
         urlParams.set("regex", encodedPattern);
-        // Construct the new share URL with preserved parameters
         const shareUrl = `${window.location.origin}${window.location.pathname}?${urlParams.toString()}`;
 
         try {
@@ -288,7 +298,7 @@ haystackText.addEventListener("input", function (ev) {
     if (currentModule !== null) {
         performSearch();
     } else {
-        searchResultDiv.textContent = "";
+        searchResultOutput.textContent = "";
     }
 });
 
@@ -304,6 +314,6 @@ if (regexFromUrl) {
         processRegexInput(decodedRegex);
     } catch (e) {
         console.error("Failed to decode or process regex from URL:", e);
-        regexErrorDiv.textContent = `Error loading regex from URL: Invalid format.`;
+        regexErrorOutput.textContent = `Error loading regex from URL: Invalid format.`;
     }
 }

@@ -72,7 +72,20 @@
                     <output id="shareRegex" for="shareRegexButton"></output>
                 </div>
 
-                <output id="statsOutput" for="regexInput"></output>
+                <output id="statsOutput" for="regexInput" style="display: none">
+                    <details>
+                        <summary>WASM Module Statistics</summary>
+
+                        <ul id="statsOutputList"></ul>
+                    </details>
+                </output>
+                <output id="watOutput" for="regexInput" style="display: none">
+                    <details>
+                        <summary>WebAssembly Text Format</summary>
+
+                        <pre id="watOutputPre"></pre>
+                    </details>
+                </output>
             </form>
         </main>
 
