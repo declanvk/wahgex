@@ -31,7 +31,7 @@
 
         <main>
             <form id="playgroundForm" onsubmit="return false;">
-                <div>
+                <div id="regexInputContainer">
                     <label for="regexInput">
                         Regular expression (<a
                             href="https://docs.rs/regex/latest/regex/#syntax"
@@ -48,7 +48,7 @@
                     <output id="regexError" for="regexInput"></output>
                 </div>
 
-                <div>
+                <div id="regexTextContainer">
                     <label for="haystackText">Haystack</label>
                     <br />
                     <textarea
@@ -63,7 +63,7 @@
                     ></output>
                 </div>
 
-                <div>
+                <div id="interactiveControlsContainer">
                     <button id="searchButton" disabled>Search</button>
                     <button id="downloadWasmButton" disabled>
                         Download WASM Module

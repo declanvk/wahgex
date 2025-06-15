@@ -24,7 +24,7 @@ pub fn compile(regex: String) -> Result<CompileResult, String> {
         .map_err(|err| err.to_string())?;
 
     let wasm_bytes = regex_vm.get_wasm();
-    let wat_string = print_bytes(&wasm_bytes).map_err(|err| err.to_string())?;
+    let wat_string = print_bytes(wasm_bytes).map_err(|err| err.to_string())?;
 
     let nfa = regex_vm.get_nfa();
 
