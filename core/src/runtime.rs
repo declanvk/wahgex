@@ -1,6 +1,6 @@
-//! TODO: Write docs for this module
+//! TODO: Write docs for this item
 
-/// TODO: Wrote docs for this item
+/// TODO: Write docs for this item
 #[derive(Debug, zerocopy::KnownLayout, zerocopy::Immutable, zerocopy::FromZeros)]
 #[repr(C)]
 pub struct MatchResultHeader {

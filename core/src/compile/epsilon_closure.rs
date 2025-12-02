@@ -9,6 +9,8 @@ use regex_automata::{
 };
 use wasm_encoder::{BlockType, NameMap, ValType};
 
+use crate::compile::instructions::InstructionSinkExt;
+
 use super::{
     context::{Function, FunctionDefinition, FunctionIdx, FunctionSignature},
     lookaround::LookFunctions,
@@ -111,7 +113,7 @@ impl EpsilonClosureFunctions {
             let epsilon_closure_fn = epsilon_closures.get(&sid).copied().unwrap();
             instructions
                 .local_get(5)
-                .i32_const(i32::from_ne_bytes(sid.as_u32().to_ne_bytes()))
+                .u32_const(sid.as_u32())
                 .i32_eq()
                 .if_(BlockType::Empty)
                 .local_get(0)
@@ -224,7 +226,7 @@ impl EpsilonClosureFunctions {
             instructions
                 // new_next_set_len is already on the stack from the prelude or the previous call to
                 // sparse_set_insert
-                .i32_const(i32::from_ne_bytes(closure_sid.as_u32().to_ne_bytes()))
+                .u32_const(closure_sid.as_u32())
                 .local_get(3) // next_set_ptr
                 // TODO(opt): Instead of creating a separate function for every state's epsilon
                 // transition, have some of them be inlined depending on size.
@@ -277,7 +279,7 @@ impl EpsilonClosureFunctions {
                     instructions
                         // Args needed [new_next_set_len, state_id, next_set_ptr]
                         .local_get(5)
-                        .i32_const(i32::from_ne_bytes(look.next.as_u32().to_ne_bytes()))
+                        .u32_const(look.next.as_u32())
                         .local_get(3)
                         .call(sparse_set_insert.into())
                         .local_set(5);

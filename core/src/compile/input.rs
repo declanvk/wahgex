@@ -6,6 +6,8 @@ use std::alloc::{Layout, LayoutError};
 use regex_automata::{nfa::thompson::NFA, Anchored};
 use wasm_encoder::{BlockType, NameMap, ValType};
 
+use crate::compile::instructions::InstructionSinkExt;
+
 use super::context::{
     BlockSignature, CompileContext, Function, FunctionDefinition, FunctionIdx, FunctionSignature,
     TypeIdx,
@@ -177,7 +179,7 @@ impl InputFunctions {
             .i32_eq()
             .if_(BlockType::Empty)
             //  return (nfa.start_anchored(), nfa.is_always_start_anchored(), true);
-            .i32_const(i32::from_ne_bytes(nfa.start_anchored().to_ne_bytes()))
+            .u32_const(nfa.start_anchored().as_u32())
             .i32_const(nfa.is_always_start_anchored() as i32)
             .i32_const(true as i32)
             .return_()
@@ -188,7 +190,7 @@ impl InputFunctions {
             .i32_eq()
             .if_(BlockType::Empty)
             //  return (nfa.start_anchored(), true, true);
-            .i32_const(i32::from_ne_bytes(nfa.start_anchored().to_ne_bytes()))
+            .u32_const(nfa.start_anchored().as_u32())
             .i32_const(true as i32)
             .i32_const(true as i32)
             .return_()
@@ -379,17 +381,14 @@ impl InputFunctions {
             .unreachable()
             .end()
             // if haystack_start_pos + haystack_len > memory.size * page_size
-            .i64_const(i64::from_ne_bytes(
+            .u64_const(
                 u64::try_from(input_layout.haystack_start_pos)
-                    .unwrap()
-                    .to_ne_bytes(),
-            ))
+                    .expect("haystack pos should fit in u64"),
+            )
             .local_get(5)
             .i64_add()
             .memory_size(0)
-            .i64_const(i64::from_ne_bytes(
-                u64::try_from(page_size).unwrap().to_ne_bytes(),
-            ))
+            .u64_const(u64::try_from(page_size).expect("page size should fit in u64"))
             .i64_mul()
             .i64_gt_u()
             .if_(BlockType::Empty)
@@ -431,11 +430,7 @@ impl InputFunctions {
         body.instructions()
             // if haystack_len == 0 {
             .local_get(0) // haystack_len
-            .i64_const(i64::from_ne_bytes(
-                u64::try_from(input_layout.haystack_start_pos)
-                    .unwrap()
-                    .to_ne_bytes(),
-            ))
+            .u64_const(u64::try_from(input_layout.haystack_start_pos).unwrap())
             .i64_add()
             .i64_const(0)
             .i64_eq()
@@ -446,17 +441,11 @@ impl InputFunctions {
             .end()
             // memory_grow = ((haystack_len + haystack_start_pos - 1) / page_size) + 1 - memory_size
             .local_get(0) // haystack_len
-            .i64_const(i64::from_ne_bytes(
-                u64::try_from(input_layout.haystack_start_pos)
-                    .unwrap()
-                    .to_ne_bytes(),
-            ))
+            .u64_const(u64::try_from(input_layout.haystack_start_pos).unwrap())
             .i64_add()
             .i64_const(1)
             .i64_sub()
-            .i64_const(i64::from_ne_bytes(
-                u64::try_from(page_size).unwrap().to_ne_bytes(),
-            ))
+            .u64_const(u64::try_from(page_size).unwrap())
             .i64_div_u()
             .i64_const(1)
             .i64_add()

@@ -16,7 +16,7 @@ use super::{
     instructions::InstructionSinkExt,
 };
 
-/// TODO: Write docs for item
+/// TODO: Write docs for this item
 #[derive(Debug)]
 pub struct PatternLayout {
     pattern_start_table_pos: usize,
@@ -24,7 +24,7 @@ pub struct PatternLayout {
 }
 
 impl PatternLayout {
-    /// TODO: Write docs for item
+    /// TODO: Write docs for this item
     pub fn new(ctx: &mut CompileContext, overall: Layout) -> Result<(Layout, Self), LayoutError> {
         let pattern_start_table_data = ctx
             .nfa
@@ -53,7 +53,7 @@ impl PatternLayout {
     }
 }
 
-/// TODO: Write docs for item
+/// TODO: Write docs for this item
 #[derive(Debug)]
 pub struct PatternFunctions {
     pub lookup_start: FunctionIdx,
@@ -91,9 +91,7 @@ impl PatternFunctions {
         body.instructions()
             // if pattern_id >= nfa.patterns_len() {
             .local_get(0)
-            .i32_const(i32::from_ne_bytes(
-                u32::try_from(nfa.pattern_len()).unwrap().to_ne_bytes(),
-            ))
+            .u32_const(u32::try_from(nfa.pattern_len()).expect("pattern len should fit in u32"))
             .i32_ge_u()
             .if_(wasm_encoder::BlockType::Empty)
             // return (0, false);
@@ -104,11 +102,7 @@ impl PatternFunctions {
             // start_state_id = pattern_start_table[pattern_id];
             .local_get(0)
             .i64_extend_i32_u()
-            .i64_const(i64::from_ne_bytes(
-                u64::try_from(layout.pattern_start_stride)
-                    .unwrap()
-                    .to_ne_bytes(),
-            ))
+            .u64_const(u64::try_from(layout.pattern_start_stride).unwrap())
             .i64_mul()
             .state_id_load(
                 u64::try_from(layout.pattern_start_table_pos).unwrap(),

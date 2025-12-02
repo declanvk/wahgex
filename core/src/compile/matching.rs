@@ -3,6 +3,8 @@
 
 use wasm_encoder::{BlockType, NameMap, ValType};
 
+use crate::compile::instructions::InstructionSinkExt;
+
 use super::{
     context::{
         BlockSignature, CompileContext, Function, FunctionDefinition, FunctionIdx,
@@ -145,18 +147,10 @@ impl MatchingFunctions {
             .local_set(11) // is_anchored
             .local_set(10) // start_state_id
             // curr_set_ptr = first_set_start_pos;
-            .i64_const(i64::from_ne_bytes(
-                u64::try_from(state_layout.first_sparse_set.set_start_pos)
-                    .unwrap()
-                    .to_ne_bytes(),
-            ))
+            .u64_const(u64::try_from(state_layout.first_sparse_set.set_start_pos).unwrap())
             .local_set(6) // curr_set_ptr
             // next_set_ptr = second_set_start_pos;
-            .i64_const(i64::from_ne_bytes(
-                u64::try_from(state_layout.second_sparse_set.set_start_pos)
-                    .unwrap()
-                    .to_ne_bytes(),
-            ))
+            .u64_const(u64::try_from(state_layout.second_sparse_set.set_start_pos).unwrap())
             .local_set(7) // next_set_ptr
             // at_offset = span_start
             .local_get(2) // span_start
@@ -198,11 +192,7 @@ impl MatchingFunctions {
             .if_(BlockType::Empty)
             // curr_set_len = branch_to_epsilon_closure(haystack_ptr, haystack_len, at_offset,
             // curr_set_ptr, curr_set_len, start_state_id)
-            .i64_const(i64::from_ne_bytes(
-                u64::try_from(input_layout.haystack_start_pos)
-                    .unwrap()
-                    .to_ne_bytes(),
-            ))
+            .u64_const(u64::try_from(input_layout.haystack_start_pos).unwrap())
             .local_get(4) // haystack_len
             .local_get(5) // at_offset
             .local_get(6) // curr_set_ptr
@@ -213,11 +203,7 @@ impl MatchingFunctions {
             .end()
             // new_next_set_len, is_match = make_current_transitions(haystack_ptr, haystack_len,
             // at_offset, curr_set_ptr, curr_set_len, next_set_ptr, next_set_len)
-            .i64_const(i64::from_ne_bytes(
-                u64::try_from(input_layout.haystack_start_pos)
-                    .unwrap()
-                    .to_ne_bytes(),
-            ))
+            .u64_const(u64::try_from(input_layout.haystack_start_pos).unwrap())
             .local_get(4) // haystack_len
             .local_get(5) // at_offset
             .local_get(6) // curr_set_ptr
@@ -234,11 +220,7 @@ impl MatchingFunctions {
         if let Some(utf8_is_boundary) = input_funcs.utf8_is_boundary {
             body.instructions()
                 // utf8_is_boundary(haystack_ptr, haystack_len, at_offset)
-                .i64_const(i64::from_ne_bytes(
-                    u64::try_from(input_layout.haystack_start_pos)
-                        .unwrap()
-                        .to_ne_bytes(),
-                ))
+                .u64_const(u64::try_from(input_layout.haystack_start_pos).unwrap())
                 .local_get(4) // haystack_len
                 .local_get(5) // at_offset
                 .call(utf8_is_boundary.into())

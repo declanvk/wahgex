@@ -351,11 +351,7 @@ impl TransitionFunctions {
             // state_id = current_set_ptr.dense[loop_index]; // local 8
             .local_get(7)
             .i64_extend_i32_u()
-            .i64_const(i64::from_ne_bytes(
-                u64::try_from(state_id_layout.align())
-                    .unwrap()
-                    .to_ne_bytes(),
-            ))
+            .u64_const(u64::try_from(state_id_layout.align()).unwrap())
             .i64_mul()
             .local_get(3)
             .i64_add()
@@ -439,7 +435,7 @@ impl TransitionFunctions {
             let transition_fn = state_transitions.get(&sid).copied().unwrap();
             instructions
                 .local_get(5) // state_id
-                .i32_const(i32::from_ne_bytes(sid.as_u32().to_ne_bytes()))
+                .u32_const(sid.as_u32())
                 .i32_eq()
                 .if_(BlockType::Empty)
                 .local_get(0) // haystack_ptr
@@ -729,11 +725,7 @@ impl TransitionFunctions {
             .loop_(BlockType::Empty)
             // if loop_index >= sparse_table.range_table_len {
             .local_get(7) // loop_index
-            .i32_const(i32::from_ne_bytes(
-                u32::try_from(sparse_table.range_table_len)
-                    .unwrap()
-                    .to_ne_bytes(),
-            ))
+            .u32_const(u32::try_from(sparse_table.range_table_len).expect("table length should fit within u32"))
             .i32_ge_u()
             .if_(BlockType::Empty)
             // return None
@@ -744,11 +736,10 @@ impl TransitionFunctions {
             // start = range_table[loop_index].0
             .local_get(7) // loop_index
             .i64_extend_i32_u()
-            .i64_const(i64::from_ne_bytes(
+            .u64_const(
                 u64::try_from(sparse_table.range_lookup_table_stride)
                     .unwrap()
-                    .to_ne_bytes(),
-            ))
+            )
             .i64_mul()
             .i32_load8_u(MemArg {
                 offset: u64::try_from(sparse_table.range_table_pos).unwrap(), // start is at offset 0
@@ -769,11 +760,10 @@ impl TransitionFunctions {
             // end = range_table[loop_index].1
             .local_get(7) // loop_index
             .i64_extend_i32_u()
-            .i64_const(i64::from_ne_bytes(
+            .u64_const(
                 u64::try_from(sparse_table.range_lookup_table_stride)
                     .unwrap()
-                    .to_ne_bytes(),
-            ))
+            )
             .i64_mul()
             .i32_load8_u(MemArg {
                 offset: u64::try_from(sparse_table.range_table_pos).unwrap() + 1, // end is at offset 1
@@ -789,11 +779,10 @@ impl TransitionFunctions {
             // next_state = state_table[loop_index]
             .local_get(7) // loop_index
             .i64_extend_i32_u()
-            .i64_const(i64::from_ne_bytes(
+            .u64_const(
                 u64::try_from(sparse_table.state_id_table_stride)
                     .unwrap()
-                    .to_ne_bytes(),
-            ))
+            )
             .i64_mul()
             .state_id_load(u64::try_from(sparse_table.state_id_table_pos).unwrap(),  state_id_layout)
             .local_set(6) // next_state
@@ -825,9 +814,7 @@ impl TransitionFunctions {
         instructions
             .local_get(5) // byte
             .i64_extend_i32_u()
-            .i64_const(i64::from_ne_bytes(
-                u64::try_from(table.table_stride).unwrap().to_ne_bytes(),
-            ))
+            .u64_const(u64::try_from(table.table_stride).unwrap())
             .i64_mul() // offset in table
             .state_id_load(u64::try_from(table.table_pos).unwrap(), state_id_layout)
             .local_tee(6) // next_state
@@ -863,7 +850,7 @@ impl TransitionFunctions {
             .i32_const(false as i32)
             .return_()
             .end()
-            .i32_const(i32::from_ne_bytes(trans.next.as_u32().to_ne_bytes()))
+            .u32_const(trans.next.as_u32())
             .local_set(6); // next_state
     }
 }

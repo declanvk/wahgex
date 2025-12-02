@@ -58,7 +58,7 @@ impl LookLayout {
         set
     };
 
-    /// TODO: Write docs for item
+    /// TODO: Write docs for this item
     pub fn new(
         ctx: &mut CompileContext,
         mut overall: Layout,
@@ -185,7 +185,7 @@ impl LookFunctions {
         Ok(Self { look_matches })
     }
 
-    /// TODO: Write docs for item
+    /// TODO: Write docs for this item
     pub fn look_matcher(&self, look: Look) -> Option<FunctionIdx> {
         self.look_matches[look.as_repr().ilog2() as usize]
     }
@@ -715,7 +715,7 @@ impl LookFunctions {
             .i64_add()
             .i32_load8_u(MemArg {
                 offset: 0,
-                align: 0,        // byte alignement
+                align: 0,        // byte alignment
                 memory_index: 0, // haystack
             })
             .i64_extend_i32_u()
