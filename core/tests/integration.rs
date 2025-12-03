@@ -52,9 +52,6 @@ fn compiler(
 
         let re = match builder.build_many(regexes) {
             Ok(re) => re,
-            Err(err) if err.is_unsupported() => {
-                return Ok(CompiledRegex::skip());
-            },
             Err(err) => {
                 return Err(err.into());
             },

@@ -9,55 +9,30 @@ use regex_automata::{
 };
 use wasm_encoder::{BlockType, InstructionSink, MemArg, NameMap, ValType};
 
-use crate::util::repeat;
-
-use super::{
-    context::{
-        ActiveDataSegment, CompileContext, FunctionDefinition, FunctionIdx, FunctionSignature,
+use crate::compile::{
+    instructions::InstructionSinkExt,
+    lookaround::{
+        byte_word::IsWordByteLookupTable,
+        perl_word_optimized::{PerlWordFunctions, PerlWordLayout},
     },
-    BuildError,
 };
+
+use super::context::{CompileContext, FunctionDefinition, FunctionIdx, FunctionSignature};
+
+mod byte_word;
+// code is generated, currently don't want to fix tool
+#[expect(clippy::redundant_static_lifetimes)]
+mod perl_word;
+mod perl_word_optimized;
 
 /// TODO: Write docs for this item
 #[derive(Debug)]
 pub struct LookLayout {
-    is_word_byte_table: Option<IsWordByteTable>,
-}
-
-#[derive(Debug)]
-struct IsWordByteTable {
-    position: u64,
+    is_word_byte_table: Option<IsWordByteLookupTable>,
+    is_perl_word_table: Option<PerlWordLayout>,
 }
 
 impl LookLayout {
-    /// This lookup table is true for bytes which are considered "word" unicode
-    /// characters.
-    ///
-    /// The logic is copied directly from <https://github.com/rust-lang/regex/blob/master/regex-automata/src/util/utf8.rs#L17-L37>
-    /// As the comment on the function (in the link) mentions, no bit-rot
-    /// because this will not change.
-    const UTF8_IS_WORD_BYTE_LUT: [bool; 256] = {
-        let mut set = [false; 256];
-        set[b'_' as usize] = true;
-
-        let mut byte = b'0';
-        while byte <= b'9' {
-            set[byte as usize] = true;
-            byte += 1;
-        }
-        byte = b'A';
-        while byte <= b'Z' {
-            set[byte as usize] = true;
-            byte += 1;
-        }
-        byte = b'a';
-        while byte <= b'z' {
-            set[byte as usize] = true;
-            byte += 1;
-        }
-        set
-    };
-
     /// TODO: Write docs for this item
     pub fn new(
         ctx: &mut CompileContext,
@@ -65,28 +40,28 @@ impl LookLayout {
     ) -> Result<(Layout, Self), LayoutError> {
         let look_set = modified_lookset_for_dependencies(&ctx.nfa);
         let is_word_byte_table = if needs_is_word_byte_lut(look_set) {
-            let (table_layout, _table_stride) = repeat(&Layout::new::<u8>(), 256)?;
-
-            let (new_overall, table_pos) = overall.extend(table_layout)?;
+            let (new_overall, table) = IsWordByteLookupTable::new(ctx, overall)?;
             overall = new_overall;
-
-            ctx.sections.add_active_data_segment(ActiveDataSegment {
-                name: "utf8_is_word_byte_table".into(),
-                data: Self::UTF8_IS_WORD_BYTE_LUT
-                    .into_iter()
-                    .map(|b| b as u8)
-                    .collect(),
-                position: table_pos,
-            });
-
-            Some(IsWordByteTable {
-                position: table_pos.try_into().expect("position should fit in u64"),
-            })
+            Some(table)
         } else {
             None
         };
 
-        Ok((overall, Self { is_word_byte_table }))
+        let is_perl_word_table = if needs_is_perl_word_lut(look_set) {
+            let (new_overall, table) = PerlWordLayout::new(ctx, overall)?;
+            overall = new_overall;
+            Some(table)
+        } else {
+            None
+        };
+
+        Ok((
+            overall,
+            Self {
+                is_word_byte_table,
+                is_perl_word_table,
+            },
+        ))
     }
 }
 
@@ -103,23 +78,31 @@ impl LookFunctions {
     const NUM_LOOKS: usize = (Look::WordEndHalfUnicode.as_repr().ilog2() as usize) + 1;
 
     /// TODO: Write docs for this item
-    pub fn new(ctx: &mut CompileContext, layout: &LookLayout) -> Result<Self, BuildError> {
+    pub fn new(ctx: &mut CompileContext, layout: &LookLayout) -> Self {
         let mut look_matches = [None; Self::NUM_LOOKS];
         let look_set = modified_lookset_for_dependencies(&ctx.nfa);
 
         if look_set.is_empty() {
-            return Ok(Self { look_matches });
+            return Self { look_matches };
         }
 
-        for look in look_set.iter() {
-            if is_unsupported_lookaround(look) {
-                // TODO: Need to implement the rest of the lookaround assertions
-                return Err(BuildError::unsupported(format!(
-                    "{look:?}/{} is not yet implemented",
-                    look.as_char()
-                )));
-            }
+        let is_word_char_fns = if needs_is_perl_word_lut(look_set) {
+            Some(PerlWordFunctions::new(
+                ctx,
+                layout
+                    .is_perl_word_table
+                    .as_ref()
+                    .expect("perl layout should be present for functions"),
+                layout
+                    .is_word_byte_table
+                    .as_ref()
+                    .expect("word byte table should be present for perl word functions"),
+            ))
+        } else {
+            None
+        };
 
+        for look in look_set.iter() {
             let sig = lookaround_fn_signature(lookaround_fn_name(look));
 
             let func = ctx.declare_function(sig);
@@ -173,7 +156,61 @@ impl LookFunctions {
                         .as_ref()
                         .expect("should have generated table"),
                 ),
-                _ => unreachable!("Should be unreachable due to first loop through lookset"),
+                Look::WordUnicode => {
+                    let perl_word_fns = is_word_char_fns
+                        .as_ref()
+                        .expect("should have generated helper functions");
+                    Self::is_word_unicode_fn(
+                        perl_word_fns.is_word_char_rev,
+                        perl_word_fns.is_word_char_fwd,
+                    )
+                },
+                Look::WordUnicodeNegate => {
+                    let perl_word_fns = is_word_char_fns
+                        .as_ref()
+                        .expect("should have generated helper functions");
+                    Self::is_word_unicode_negate_fn(
+                        perl_word_fns.is_word_character,
+                        perl_word_fns.decode_last_character,
+                        perl_word_fns.decode_next_character,
+                    )
+                },
+                Look::WordStartUnicode => {
+                    let perl_word_fns = is_word_char_fns
+                        .as_ref()
+                        .expect("should have generated helper functions");
+                    Self::is_word_start_unicode_fn(
+                        perl_word_fns.is_word_char_rev,
+                        perl_word_fns.is_word_char_fwd,
+                    )
+                },
+                Look::WordEndUnicode => {
+                    let perl_word_fns = is_word_char_fns
+                        .as_ref()
+                        .expect("should have generated helper functions");
+                    Self::is_word_end_unicode_fn(
+                        perl_word_fns.is_word_char_rev,
+                        perl_word_fns.is_word_char_fwd,
+                    )
+                },
+                Look::WordStartHalfUnicode => {
+                    let perl_word_fns = is_word_char_fns
+                        .as_ref()
+                        .expect("should have generated helper functions");
+                    Self::is_word_start_half_unicode_fn(
+                        perl_word_fns.is_word_character,
+                        perl_word_fns.decode_last_character,
+                    )
+                },
+                Look::WordEndHalfUnicode => {
+                    let perl_word_fns = is_word_char_fns
+                        .as_ref()
+                        .expect("should have generated helper functions");
+                    Self::is_word_end_half_unicode_fn(
+                        perl_word_fns.is_word_character,
+                        perl_word_fns.decode_next_character,
+                    )
+                },
             };
 
             ctx.define_function(
@@ -182,7 +219,7 @@ impl LookFunctions {
             );
         }
 
-        Ok(Self { look_matches })
+        Self { look_matches }
     }
 
     /// TODO: Write docs for this item
@@ -507,7 +544,7 @@ impl LookFunctions {
         }
     }
 
-    fn is_word_ascii_fn(is_word_byte_table: &IsWordByteTable) -> FunctionDefinition {
+    fn is_word_ascii_fn(is_word_byte_table: &IsWordByteLookupTable) -> FunctionDefinition {
         let mut locals_name_map = lookaround_fn_common_name_map();
         // Locals
         locals_name_map.append(3, "word_before");
@@ -565,7 +602,7 @@ impl LookFunctions {
         }
     }
 
-    fn is_word_start_ascii_fn(is_word_byte_table: &IsWordByteTable) -> FunctionDefinition {
+    fn is_word_start_ascii_fn(is_word_byte_table: &IsWordByteLookupTable) -> FunctionDefinition {
         let mut locals_name_map = lookaround_fn_common_name_map();
         // Locals
         locals_name_map.append(3, "word_before");
@@ -599,7 +636,7 @@ impl LookFunctions {
         }
     }
 
-    fn is_word_end_ascii_fn(is_word_byte_table: &IsWordByteTable) -> FunctionDefinition {
+    fn is_word_end_ascii_fn(is_word_byte_table: &IsWordByteLookupTable) -> FunctionDefinition {
         let mut locals_name_map = lookaround_fn_common_name_map();
         // Locals
         locals_name_map.append(3, "word_before");
@@ -633,7 +670,9 @@ impl LookFunctions {
         }
     }
 
-    fn is_word_start_half_ascii_fn(is_word_byte_table: &IsWordByteTable) -> FunctionDefinition {
+    fn is_word_start_half_ascii_fn(
+        is_word_byte_table: &IsWordByteLookupTable,
+    ) -> FunctionDefinition {
         let locals_name_map = lookaround_fn_common_name_map();
 
         // Sketch:
@@ -660,7 +699,7 @@ impl LookFunctions {
         }
     }
 
-    fn is_word_end_half_ascii_fn(is_word_byte_table: &IsWordByteTable) -> FunctionDefinition {
+    fn is_word_end_half_ascii_fn(is_word_byte_table: &IsWordByteLookupTable) -> FunctionDefinition {
         let locals_name_map = lookaround_fn_common_name_map();
 
         // Sketch:
@@ -687,9 +726,409 @@ impl LookFunctions {
         }
     }
 
+    fn is_word_unicode_fn(
+        is_word_char_rev: FunctionIdx,
+        is_word_char_fwd: FunctionIdx,
+    ) -> FunctionDefinition {
+        let locals_name_map = lookaround_fn_common_name_map();
+
+        // Sketch:
+        // ```rust
+        // let word_before = is_word_char::rev(haystack, at);
+        // let word_after = is_word_char::fwd(haystack, at);
+        // return word_before != word_after;
+        // ```
+
+        let mut body = wasm_encoder::Function::new([]);
+        let mut instructions = body.instructions();
+
+        instructions
+            .local_get(0)
+            .local_get(1)
+            .local_get(2)
+            // let word_before = is_word_char::rev(haystack, at)?;
+            .call(is_word_char_rev.into())
+            .local_get(0)
+            .local_get(1)
+            .local_get(2)
+            // let word_after = is_word_char::fwd(haystack, at)?;
+            .call(is_word_char_fwd.into())
+            // return word_before != word_after;
+            // a | b | a != b | a XOR B
+            // T | T | F | F
+            // T | F | T | T
+            // F | T | T | T
+            // F | F | F | F
+            .i32_xor()
+            .end();
+
+        FunctionDefinition {
+            body,
+            locals_name_map,
+            labels_name_map: None,
+            branch_hints: None,
+        }
+    }
+
+    fn is_word_unicode_negate_fn(
+        is_word_character: FunctionIdx,
+        decode_last_character: FunctionIdx,
+        decode_next_character: FunctionIdx,
+    ) -> FunctionDefinition {
+        let mut locals_name_map = lookaround_fn_common_name_map();
+        // Locals
+        locals_name_map.append(3, "word_before");
+        locals_name_map.append(4, "word_after");
+        locals_name_map.append(5, "character");
+        let mut labels_name_map = NameMap::new();
+        labels_name_map.append(0, "check_before_start");
+        labels_name_map.append(1, "check_last_invalid_char");
+        labels_name_map.append(2, "check_after_start");
+        labels_name_map.append(3, "check_next_invalid_char");
+
+        // Sketch:
+        // ```rust
+        // word_before = false
+        // if at_offset > 0 {
+        //     let (character, _) = utf8_decode_last_character(haystack_ptr, at_offset)
+        //     if character == INVALID_CHAR {
+        //         return false
+        //     } else {
+        //         word_before = is_word_character(character)
+        //     }
+        // }
+        //
+        // word_after = false
+        // if at_offset < haystack_len {
+        //     let (character, _) = utf8_decode_next_character(haystack_ptr + at_offset, haystack_len - at_offset)
+        //     if character == INVALID_CHAR {
+        //         return false
+        //     } else {
+        //         word_after = is_word_character(character)
+        //     }
+        // }
+        //
+        // return word_before == word_after
+        // ```
+
+        let mut body = wasm_encoder::Function::new([(3, ValType::I32)]);
+        let mut instructions = body.instructions();
+
+        instructions
+            // if at_offset > 0 {
+            .local_get(2)
+            .i64_const(0)
+            .i64_gt_u()
+            .if_(BlockType::Empty)
+            //     let (character, _) = utf8_decode_last_character(haystack_ptr, at_offset)
+            .local_get(0)
+            .local_get(2)
+            .call(decode_last_character.into())
+            .drop()
+            .local_tee(5)
+            //     if character == INVALID_CHAR {
+            .u32_const(PerlWordFunctions::INVALID_CHAR)
+            .i32_eq()
+            .if_(BlockType::Empty)
+            //         return false
+            .bool_const(false)
+            .return_()
+            //     } else {
+            .else_()
+            //         word_after = is_word_character(character)
+            .local_get(5)
+            .call(is_word_character.into())
+            .local_set(3)
+            //     } - end inner if
+            .end()
+            // } - end outer if
+            .end()
+            // if at_offset < haystack_len {
+            .local_get(2)
+            .local_get(1)
+            .i64_lt_u()
+            .if_(BlockType::Empty)
+            //     let haystack_slice_ptr = haystack_ptr + at_offset
+            //     let haystack_slice_len = haystack_len - at_offset
+            //     let (character, _) = utf8_decode_next_character(.., ..)
+            .local_get(0)
+            .local_get(2)
+            .i64_add()
+            .local_get(1)
+            .local_get(2)
+            .i64_sub()
+            .call(decode_next_character.into())
+            .drop()
+            .local_tee(5)
+            //     if character == INVALID_CHAR {
+            .u32_const(PerlWordFunctions::INVALID_CHAR)
+            .i32_eq()
+            .if_(BlockType::Empty)
+            //         return false
+            .bool_const(false)
+            .return_()
+            //     } else {
+            .else_()
+            //         word_after = is_word_character(character)
+            .local_get(5)
+            .call(is_word_character.into())
+            .local_set(4)
+            //     } - end inner if
+            .end()
+            // } - end outer if
+            .end()
+            // return word_before == word_after
+            .local_get(3)
+            .local_get(4)
+            .i32_eq()
+            .end();
+
+        FunctionDefinition {
+            body,
+            locals_name_map,
+            labels_name_map: None,
+            branch_hints: None,
+        }
+    }
+
+    fn is_word_start_unicode_fn(
+        is_word_char_rev: FunctionIdx,
+        is_word_char_fwd: FunctionIdx,
+    ) -> FunctionDefinition {
+        let locals_name_map = lookaround_fn_common_name_map();
+
+        // Sketch:
+        // ```rust
+        // let word_before = is_word_char::rev(haystack, at);
+        // let word_after = is_word_char::fwd(haystack, at);
+        // return !word_before && word_after
+        // ```
+
+        let mut body = wasm_encoder::Function::new([]);
+        let mut instructions = body.instructions();
+
+        instructions
+            .local_get(0)
+            .local_get(1)
+            .local_get(2)
+            // let word_before = is_word_char::rev(haystack, at)?;
+            .call(is_word_char_rev.into())
+            // !word_before
+            .u32_const(1)
+            .i32_xor()
+            .local_get(0)
+            .local_get(1)
+            .local_get(2)
+            // let word_after = is_word_char::fwd(haystack, at)?;
+            .call(is_word_char_fwd.into())
+            // return !word_before && word_after
+            .i32_and()
+            .end();
+
+        FunctionDefinition {
+            body,
+            locals_name_map,
+            labels_name_map: None,
+            branch_hints: None,
+        }
+    }
+
+    fn is_word_end_unicode_fn(
+        is_word_char_rev: FunctionIdx,
+        is_word_char_fwd: FunctionIdx,
+    ) -> FunctionDefinition {
+        let locals_name_map = lookaround_fn_common_name_map();
+
+        // Sketch:
+        // ```rust
+        // let word_before = is_word_char::rev(haystack, at);
+        // let word_after = is_word_char::fwd(haystack, at);
+        // return word_before && !word_after
+        // ```
+
+        let mut body = wasm_encoder::Function::new([]);
+        let mut instructions = body.instructions();
+
+        instructions
+            .local_get(0)
+            .local_get(1)
+            .local_get(2)
+            // let word_before = is_word_char::rev(haystack, at)?;
+            .call(is_word_char_rev.into())
+            .local_get(0)
+            .local_get(1)
+            .local_get(2)
+            // let word_after = is_word_char::fwd(haystack, at)?;
+            .call(is_word_char_fwd.into())
+            .u32_const(1)
+            .i32_xor()
+            // return word_before && !word_after
+            .i32_and()
+            .end();
+
+        FunctionDefinition {
+            body,
+            locals_name_map,
+            labels_name_map: None,
+            branch_hints: None,
+        }
+    }
+
+    fn is_word_start_half_unicode_fn(
+        is_word_character: FunctionIdx,
+        decode_last_character: FunctionIdx,
+    ) -> FunctionDefinition {
+        let mut locals_name_map = lookaround_fn_common_name_map();
+        // Locals
+        locals_name_map.append(3, "word_before");
+        locals_name_map.append(4, "character");
+        let mut labels_name_map = NameMap::new();
+        labels_name_map.append(0, "check_before_start");
+        labels_name_map.append(1, "check_last_invalid_char");
+
+        // Sketch:
+        // ```rust
+        // word_before = false
+        // if at_offset > 0 {
+        //     let (character, _) = utf8_decode_last_character(haystack_ptr, at_offset)
+        //     if character == INVALID_CHAR {
+        //         return false
+        //     } else {
+        //         word_before = is_word_character(character)
+        //     }
+        // }
+        //
+        // return !word_before
+        // ```
+
+        let mut body = wasm_encoder::Function::new([(2, ValType::I32)]);
+        let mut instructions = body.instructions();
+
+        instructions
+            // if at_offset > 0 {
+            .local_get(2)
+            .i64_const(0)
+            .i64_gt_u()
+            .if_(BlockType::Empty)
+            //     let (character, _) = utf8_decode_last_character(haystack_ptr, at_offset)
+            .local_get(0)
+            .local_get(2)
+            .call(decode_last_character.into())
+            .drop()
+            .local_tee(4)
+            //     if character == INVALID_CHAR {
+            .u32_const(PerlWordFunctions::INVALID_CHAR)
+            .i32_eq()
+            .if_(BlockType::Empty)
+            //         return false
+            .bool_const(false)
+            .return_()
+            //     } else {
+            .else_()
+            //         word_after = is_word_character(character)
+            .local_get(4)
+            .call(is_word_character.into())
+            .local_set(3)
+            //     } - end inner if
+            .end()
+            // } - end outer if
+            .end()
+            // return !word_before
+            .local_get(3)
+            .u32_const(1)
+            .i32_xor()
+            .end();
+
+        FunctionDefinition {
+            body,
+            locals_name_map,
+            labels_name_map: None,
+            branch_hints: None,
+        }
+    }
+
+    fn is_word_end_half_unicode_fn(
+        is_word_character: FunctionIdx,
+        decode_next_character: FunctionIdx,
+    ) -> FunctionDefinition {
+        let mut locals_name_map = lookaround_fn_common_name_map();
+        // Locals
+        locals_name_map.append(3, "word_after");
+        locals_name_map.append(4, "character");
+        let mut labels_name_map = NameMap::new();
+        labels_name_map.append(0, "check_after_start");
+        labels_name_map.append(1, "check_next_invalid_char");
+
+        // Sketch:
+        // ```rust
+        // word_after = false
+        // if at_offset < haystack_len {
+        //     let (character, _) = utf8_decode_next_character(haystack_ptr + at_offset, haystack_len - at_offset)
+        //     if character == INVALID_CHAR {
+        //         return false
+        //     } else {
+        //         word_after = is_word_character(character)
+        //     }
+        // }
+        //
+        // return !word_after
+        // ```
+
+        let mut body = wasm_encoder::Function::new([(2, ValType::I32)]);
+        let mut instructions = body.instructions();
+
+        instructions
+            // if at_offset < haystack_len {
+            .local_get(2)
+            .local_get(1)
+            .i64_lt_u()
+            .if_(BlockType::Empty)
+            //     let haystack_slice_ptr = haystack_ptr + at_offset
+            //     let haystack_slice_len = haystack_len - at_offset
+            //     let (character, _) = utf8_decode_next_character(.., ..)
+            .local_get(0)
+            .local_get(2)
+            .i64_add()
+            .local_get(1)
+            .local_get(2)
+            .i64_sub()
+            .call(decode_next_character.into())
+            .drop()
+            .local_tee(4)
+            //     if character == INVALID_CHAR {
+            .u32_const(PerlWordFunctions::INVALID_CHAR)
+            .i32_eq()
+            .if_(BlockType::Empty)
+            //         return false
+            .bool_const(false)
+            .return_()
+            //     } else {
+            .else_()
+            //         word_after = is_word_character(character)
+            .local_get(4)
+            .call(is_word_character.into())
+            .local_set(3)
+            //     } - end inner if
+            .end()
+            // } - end outer if
+            .end()
+            // return !word_after
+            .local_get(3)
+            .u32_const(1)
+            .i32_xor()
+            .end();
+
+        FunctionDefinition {
+            body,
+            locals_name_map,
+            labels_name_map: None,
+            branch_hints: None,
+        }
+    }
+
     fn word_before_ascii_instructions(
         instructions: &mut InstructionSink,
-        is_word_byte_table: &IsWordByteTable,
+        is_word_byte_table: &IsWordByteLookupTable,
     ) {
         // Sketch:
         // ```rust
@@ -720,7 +1159,7 @@ impl LookFunctions {
             })
             .i64_extend_i32_u()
             .i32_load8_u(MemArg {
-                offset: is_word_byte_table.position,
+                offset: is_word_byte_table.position(),
                 align: 0, // byte alignment
                 memory_index: 1,
             })
@@ -729,7 +1168,7 @@ impl LookFunctions {
 
     fn word_after_ascii_instructions(
         instructions: &mut InstructionSink,
-        is_word_byte_table: &IsWordByteTable,
+        is_word_byte_table: &IsWordByteLookupTable,
     ) {
         // Sketch:
         // ```rust
@@ -760,7 +1199,7 @@ impl LookFunctions {
             })
             .i64_extend_i32_u()
             .i32_load8_u(MemArg {
-                offset: is_word_byte_table.position,
+                offset: is_word_byte_table.position(),
                 align: 0, // byte alignment
                 memory_index: 1,
             })
@@ -811,25 +1250,12 @@ fn lookaround_fn_name(look: Look) -> &'static str {
     }
 }
 
-fn is_unsupported_lookaround(look: Look) -> bool {
-    matches!(
-        look,
-        Look::WordUnicode
-            | Look::WordUnicodeNegate
-            | Look::WordStartUnicode
-            | Look::WordEndUnicode
-            | Look::WordStartHalfUnicode
-            | Look::WordEndHalfUnicode
-    )
+fn needs_is_word_byte_lut(look_set: LookSet) -> bool {
+    look_set.contains_word_ascii() || needs_is_perl_word_lut(look_set)
 }
 
-fn needs_is_word_byte_lut(look_set: LookSet) -> bool {
-    look_set.contains(Look::WordAscii)
-        || look_set.contains(Look::WordAsciiNegate)
-        || look_set.contains(Look::WordStartAscii)
-        || look_set.contains(Look::WordEndAscii)
-        || look_set.contains(Look::WordStartHalfAscii)
-        || look_set.contains(Look::WordEndHalfAscii)
+fn needs_is_perl_word_lut(look_set: LookSet) -> bool {
+    look_set.contains_word_unicode()
 }
 
 fn modified_lookset_for_dependencies(nfa: &NFA) -> LookSet {

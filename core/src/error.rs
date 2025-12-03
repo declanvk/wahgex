@@ -11,26 +11,12 @@ pub struct BuildError {
     kind: Box<BuildErrorKind>,
 }
 
-impl BuildError {
-    pub(crate) fn unsupported(feature: impl Into<String>) -> Self {
-        Self {
-            kind: Box::new(BuildErrorKind::Unsupported(feature.into())),
-        }
-    }
-
-    /// Return true if the error was caused by an unsupported feature.
-    pub fn is_unsupported(&self) -> bool {
-        matches!(&*self.kind, BuildErrorKind::Unsupported(_))
-    }
-}
-
 impl fmt::Display for BuildError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &*self.kind {
             BuildErrorKind::Layout(err) => err.fmt(f),
             BuildErrorKind::NFABuild(err) => err.fmt(f),
             BuildErrorKind::LookaroundUnicode(err) => err.fmt(f),
-            BuildErrorKind::Unsupported(feature) => write!(f, "Unsupported feature: {feature}"),
         }
     }
 }
@@ -41,7 +27,6 @@ impl Error for BuildError {
             BuildErrorKind::Layout(err) => Some(err),
             BuildErrorKind::NFABuild(err) => Some(err),
             BuildErrorKind::LookaroundUnicode(err) => Some(err),
-            BuildErrorKind::Unsupported(_) => None,
         }
     }
 }
@@ -79,5 +64,4 @@ enum BuildErrorKind {
     Layout(LayoutError),
     NFABuild(regex_automata::nfa::thompson::BuildError),
     LookaroundUnicode(regex_automata::util::look::UnicodeWordBoundaryError),
-    Unsupported(String),
 }

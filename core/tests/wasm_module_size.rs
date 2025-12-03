@@ -101,9 +101,6 @@ fn compile(
 
     let re = match builder.build_many(regexes) {
         Ok(re) => re,
-        Err(err) if err.is_unsupported() => {
-            return Ok(CompileOutput::Skip);
-        },
         Err(err) => {
             return Err(err.into());
         },

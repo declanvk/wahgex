@@ -555,7 +555,7 @@ mod tests {
         let (overall, sparse_set_layout) = SparseSetLayout::new(&mut ctx, overall).unwrap();
         let (overall, look_layout) = LookLayout::new(&mut ctx, overall).unwrap();
         let sparse_set_functions = SparseSetFunctions::new(&mut ctx, &sparse_set_layout);
-        let look_funcs = LookFunctions::new(&mut ctx, &look_layout).unwrap();
+        let look_funcs = LookFunctions::new(&mut ctx, &look_layout);
 
         let _epsilon_closure_functions =
             EpsilonClosureFunctions::new(&mut ctx, sparse_set_functions.insert, &look_funcs);

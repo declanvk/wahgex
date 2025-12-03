@@ -431,6 +431,18 @@ impl TransitionFunctions {
         let mut states = state_transitions.keys().copied().collect::<Vec<_>>();
         states.sort();
 
+        // TODO(opt): Switch to using a `br_table` instead of a bunch of if-statements
+        // We would need to figure out the holes in the state IDs list and route those
+        // to the fallback block. See https://godbolt.org/z/ba89YPx3z for an example.
+        //
+        // Maybe we could also do a table and `call_indirect`? We'd have the same large
+        // mapping, but I think the number of instructions emitted would be a lot
+        // smaller. The downside might be perf hit on an indirect call, but I'm not sure
+        // its worse than the "many checks" situations. Similarly to the `br_table`,
+        // we'd need a dummy function for the holes in the state ID space.
+        //
+        // Playing around with the godbolt sample, if the spaces between occupied
+        // entries grows too large then the jump should be split into multiple levels
         for sid in states {
             let transition_fn = state_transitions.get(&sid).copied().unwrap();
             instructions
@@ -883,7 +895,7 @@ mod tests {
         let (overall, sparse_set_layout) = SparseSetLayout::new(&mut ctx, overall).unwrap();
         let sparse_set_functions = SparseSetFunctions::new(&mut ctx, &sparse_set_layout);
         let (overall, look_layout) = LookLayout::new(&mut ctx, overall).unwrap();
-        let look_funcs = LookFunctions::new(&mut ctx, &look_layout).unwrap();
+        let look_funcs = LookFunctions::new(&mut ctx, &look_layout);
         let epsilon_closures =
             EpsilonClosureFunctions::new(&mut ctx, sparse_set_functions.insert, &look_funcs)
                 .unwrap();
@@ -1124,7 +1136,7 @@ mod tests {
         let (overall, look_layout) = LookLayout::new(&mut ctx, overall).unwrap();
 
         let sparse_set_functions = SparseSetFunctions::new(&mut ctx, &current_set_layout);
-        let look_funcs = LookFunctions::new(&mut ctx, &look_layout).unwrap();
+        let look_funcs = LookFunctions::new(&mut ctx, &look_layout);
 
         let epsilon_closures =
             EpsilonClosureFunctions::new(&mut ctx, sparse_set_functions.insert, &look_funcs)

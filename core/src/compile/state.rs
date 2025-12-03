@@ -70,7 +70,7 @@ impl StateFunctions {
         // It shouldn't matter if we pass the first or the second sparse set, since they
         // have the same
         let sparse_set = SparseSetFunctions::new(ctx, &layout.first_sparse_set);
-        let look_funcs = LookFunctions::new(ctx, &layout.look)?;
+        let look_funcs = LookFunctions::new(ctx, &layout.look);
         let epsilon_closure = EpsilonClosureFunctions::new(ctx, sparse_set.insert, &look_funcs)?;
         let transition = TransitionFunctions::new(ctx, &epsilon_closure, &layout.transition);
         let pattern = PatternFunctions::new(ctx, &layout.pattern);
