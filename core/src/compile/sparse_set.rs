@@ -210,7 +210,7 @@ impl SparseSetFunctions {
             .local_get(0) // set_len for contains
             .local_get(1) // state_id for contains
             .call(contains.into())
-            .i32_const(true as i32)
+            .bool_const(true)
             .i32_eq()
             .if_(BlockType::Empty)
             .local_get(0) // return current set_len

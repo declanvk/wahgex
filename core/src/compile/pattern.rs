@@ -96,7 +96,7 @@ impl PatternFunctions {
             .if_(wasm_encoder::BlockType::Empty)
             // return (0, false);
             .i32_const(0)
-            .i32_const(false as i32)
+            .bool_const(false)
             .return_()
             .end()
             // start_state_id = pattern_start_table[pattern_id];
@@ -109,7 +109,7 @@ impl PatternFunctions {
                 // state memory
                 state_id_layout,
             )
-            .i32_const(true as i32)
+            .bool_const(true)
             .end();
 
         Function {

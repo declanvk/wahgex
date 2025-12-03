@@ -345,7 +345,7 @@ impl TransitionFunctions {
             .if_(BlockType::Empty)
             // return (new_next_set_len, false);
             .local_get(9)
-            .i32_const(false as i32)
+            .bool_const(false)
             .return_()
             .end()
             // state_id = current_set_ptr.dense[loop_index]; // local 8
@@ -370,7 +370,7 @@ impl TransitionFunctions {
                 branch_to_transition_is_match_block_sig.into(),
             ))
             // return (new_next_set_len, true);
-            .i32_const(true as i32)
+            .bool_const(true)
             .return_()
             .else_()
             .local_set(9) // need to update new_next_set_len on non-match
@@ -384,7 +384,7 @@ impl TransitionFunctions {
             .end() // end loop
             // return (new_next_set_len, false);
             .local_get(9)
-            .i32_const(false as i32)
+            .bool_const(false)
             .end();
 
         Function {
@@ -451,7 +451,7 @@ impl TransitionFunctions {
         // If it falls through to this point, then we must assume thats its a state
         // which has no transition. In which case, we need to return the current
         // `next_set_len` and `false` for is_match.
-        instructions.local_get(4).i32_const(false as i32).end();
+        instructions.local_get(4).bool_const(false).end();
 
         Function {
             sig: FunctionSignature {
@@ -585,7 +585,7 @@ impl TransitionFunctions {
             State::Match { .. } => {
                 // TODO: Need to update for pattern matches
                 // return Some(...)
-                instructions.local_get(4).i32_const(true as i32);
+                instructions.local_get(4).bool_const(true);
             },
         }
         instructions.end();
@@ -634,7 +634,7 @@ impl TransitionFunctions {
             .if_(BlockType::Empty)
             // return None
             .local_get(4) // next_set_len
-            .i32_const(false as i32)
+            .bool_const(false)
             .return_()
             .end() // end if at_offset >= haystack_len
             // TODO(opt): We can make haystack_ptr a constant if we thread through the input layout
@@ -676,7 +676,7 @@ impl TransitionFunctions {
             // present)
             .call(branch_to_epsilon_closure.into()) // returns new_next_set_len
             // return None
-            .i32_const(false as i32);
+            .bool_const(false);
     }
 
     fn sparse_transition_body(
@@ -730,7 +730,7 @@ impl TransitionFunctions {
             .if_(BlockType::Empty)
             // return None
             .local_get(4) // next_set_len
-            .i32_const(false as i32)
+            .bool_const(false)
             .return_()
             .end() // end if loop_index >= sparse_table.range_table_len {
             // start = range_table[loop_index].0
@@ -753,7 +753,7 @@ impl TransitionFunctions {
             .if_(BlockType::Empty)
             // return None
             .local_get(4) // next_set_len
-            .i32_const(false as i32)
+            .bool_const(false)
             .return_()
             // } else { // start <= byte
             .else_()
@@ -823,7 +823,7 @@ impl TransitionFunctions {
             .if_(BlockType::Empty)
             // return None
             .local_get(4) // next_set_len
-            .i32_const(false as i32)
+            .bool_const(false)
             .return_()
             .end();
     }
@@ -837,7 +837,7 @@ impl TransitionFunctions {
             .i32_gt_u() // >
             .if_(BlockType::Empty)
             .local_get(4) // next_set_len
-            .i32_const(false as i32)
+            .bool_const(false)
             .return_()
             .end()
             // byte <= self.end
@@ -847,7 +847,7 @@ impl TransitionFunctions {
             .i32_gt_u() // >
             .if_(BlockType::Empty)
             .local_get(4) // next_set_len
-            .i32_const(false as i32)
+            .bool_const(false)
             .return_()
             .end()
             .u32_const(trans.next.as_u32())

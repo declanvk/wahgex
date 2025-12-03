@@ -180,8 +180,8 @@ impl InputFunctions {
             .if_(BlockType::Empty)
             //  return (nfa.start_anchored(), nfa.is_always_start_anchored(), true);
             .u32_const(nfa.start_anchored().as_u32())
-            .i32_const(nfa.is_always_start_anchored() as i32)
-            .i32_const(true as i32)
+            .bool_const(nfa.is_always_start_anchored())
+            .bool_const(true)
             .return_()
             .end()
             // if anchored == Anchored::Yes {
@@ -191,8 +191,8 @@ impl InputFunctions {
             .if_(BlockType::Empty)
             //  return (nfa.start_anchored(), true, true);
             .u32_const(nfa.start_anchored().as_u32())
-            .i32_const(true as i32)
-            .i32_const(true as i32)
+            .bool_const(true)
+            .bool_const(true)
             .return_()
             .end()
             // if anchored == Anchored::Pattern {
@@ -207,8 +207,8 @@ impl InputFunctions {
                 pattern_lookup_start_result_block_sig.into(),
             ))
             //  return (pattern_start, true, true);
-            .i32_const(true as i32)
-            .i32_const(true as i32)
+            .bool_const(true)
+            .bool_const(true)
             .return_()
             .else_()
             .drop()
@@ -217,7 +217,7 @@ impl InputFunctions {
             // return (0, 0, false);
             .i32_const(0)
             .i32_const(0)
-            .i32_const(false as i32)
+            .bool_const(false)
             .end();
 
         Function {
@@ -331,10 +331,10 @@ impl InputFunctions {
         body.instructions()
             // if earliest != true && earliest != false {
             .local_get(0)
-            .i32_const(true as i32)
+            .bool_const(true)
             .i32_ne()
             .local_get(0)
-            .i32_const(false as i32)
+            .bool_const(false)
             .i32_ne()
             .i32_and()
             .if_(BlockType::Empty)

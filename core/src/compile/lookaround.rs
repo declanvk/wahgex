@@ -254,7 +254,7 @@ impl LookFunctions {
             .i64_eqz()
             .if_(BlockType::Empty)
             // TODO(opt): is the branch better here? Or should it just be an unconditional i32.or
-            .i32_const(true as i32)
+            .bool_const(true)
             .return_()
             .end()
             // haystack[at_offset - 1] == lineterm
@@ -296,7 +296,7 @@ impl LookFunctions {
             .i64_eq()
             .if_(BlockType::Empty)
             // TODO(opt): is the branch better here? Or should it just be an unconditional i32.or
-            .i32_const(true as i32)
+            .bool_const(true)
             .return_()
             .end()
             // haystack[at_offset] == lineterm
@@ -346,7 +346,7 @@ impl LookFunctions {
             .local_get(2)
             .i64_eqz()
             .if_(BlockType::Empty)
-            .i32_const(true as i32)
+            .bool_const(true)
             .return_()
             .end()
             // haystack[at - 1] == b'\n'
@@ -363,7 +363,7 @@ impl LookFunctions {
             .i32_const(b'\n' as i32)
             .i32_eq()
             .if_(BlockType::Empty)
-            .i32_const(true as i32)
+            .bool_const(true)
             .return_()
             .end()
             // haystack[at - 1] != b'\r'
@@ -380,7 +380,7 @@ impl LookFunctions {
             .i32_const(b'\r' as i32)
             .i32_ne()
             .if_(BlockType::Empty)
-            .i32_const(false as i32)
+            .bool_const(false)
             .return_()
             .end()
             // at >= haystack_len
@@ -388,7 +388,7 @@ impl LookFunctions {
             .local_get(1)
             .i64_ge_u()
             .if_(BlockType::Empty)
-            .i32_const(true as i32)
+            .bool_const(true)
             .return_()
             .end()
             // haystack[at] != b'\n'
@@ -444,7 +444,7 @@ impl LookFunctions {
             .local_get(1)
             .i64_eq()
             .if_(BlockType::Empty)
-            .i32_const(true as i32)
+            .bool_const(true)
             .return_()
             .end()
             // haystack[at] == b'\r'
@@ -459,7 +459,7 @@ impl LookFunctions {
             .i32_const(b'\r' as i32)
             .i32_eq()
             .if_(BlockType::Empty)
-            .i32_const(true as i32)
+            .bool_const(true)
             .return_()
             .end()
             // haystack[at] != b'\n'
@@ -474,14 +474,14 @@ impl LookFunctions {
             .i32_const(b'\n' as i32)
             .i32_ne()
             .if_(BlockType::Empty)
-            .i32_const(false as i32)
+            .bool_const(false)
             .return_()
             .end()
             // at == 0
             .local_get(2)
             .i64_eqz()
             .if_(BlockType::Empty)
-            .i32_const(true as i32)
+            .bool_const(true)
             .return_()
             .end()
             // haystack[at - 1] != b'\r'
@@ -705,7 +705,7 @@ impl LookFunctions {
             .local_get(2)
             .i64_eqz()
             .if_(BlockType::Result(ValType::I32))
-            .i32_const(false as i32)
+            .bool_const(false)
             .else_()
             // word_before = is_word_byte_table[haystack_ptr[at_offset - 1]];
             .local_get(2)
@@ -747,7 +747,7 @@ impl LookFunctions {
             .local_get(1)
             .i64_ge_u()
             .if_(BlockType::Result(ValType::I32))
-            .i32_const(false as i32)
+            .bool_const(false)
             .else_()
             // word_after = is_word_byte_table[haystack_ptr[at_offset]];
             .local_get(2)

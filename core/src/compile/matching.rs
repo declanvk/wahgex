@@ -121,7 +121,7 @@ impl MatchingFunctions {
         body.instructions()
             // assert_input_args_wf(true, anchored, anchored_pattern, span_start, span_end,
             // haystack_len)
-            .i32_const(true as i32) // earliest
+            .bool_const(true) // earliest
             .local_get(0) // anchored
             .local_get(1) // anchored_pattern
             .local_get(2) // span_start
@@ -133,7 +133,7 @@ impl MatchingFunctions {
             .local_get(1) // anchored_pattern
             .call(input_funcs.start_config.into())
             // if !is_some {
-            .i32_const(false as i32)
+            .bool_const(false)
             .i32_eq()
             .if_(BlockType::FunctionType(
                 start_config_is_some_block_sig.into(),
@@ -141,7 +141,7 @@ impl MatchingFunctions {
             // return false;
             .drop()
             .drop()
-            .i32_const(false as i32)
+            .bool_const(false)
             .return_()
             .end()
             .local_set(11) // is_anchored
@@ -163,7 +163,7 @@ impl MatchingFunctions {
             .i64_gt_u()
             .if_(BlockType::Empty)
             // return false;
-            .i32_const(false as i32)
+            .bool_const(false)
             .return_()
             .end()
             // if curr_set_len == 0 && is_anchored && at_offset > span_start {
@@ -178,12 +178,12 @@ impl MatchingFunctions {
             .i32_and()
             .if_(BlockType::Empty)
             // return false;
-            .i32_const(false as i32)
+            .bool_const(false)
             .return_()
             .end()
             // if !is_anchored || at_offset == span_start {
             .local_get(11) // is_anchored
-            .i32_const(false as i32)
+            .bool_const(false)
             .i32_eq()
             .local_get(5) // at_offset
             .local_get(2) // span_start
@@ -230,7 +230,7 @@ impl MatchingFunctions {
         body.instructions()
             .if_(BlockType::FunctionType(is_match_block_sig.into()))
             .drop()
-            .i32_const(true as i32)
+            .bool_const(true)
             .return_()
             .else_()
             // next_set_len = new_next_set_len;
@@ -257,7 +257,7 @@ impl MatchingFunctions {
             .br(0) // continue loop
             .end()
             // } end loop
-            .i32_const(false as i32)
+            .bool_const(false)
             .end();
 
         Function {

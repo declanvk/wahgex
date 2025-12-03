@@ -11,11 +11,15 @@ pub trait InstructionSinkExt {
     fn state_id_store(&mut self, offset: u64, state_id_layout: &Layout) -> &mut Self;
 
     fn u32_const(&mut self, val: u32) -> &mut Self;
-
     fn u64_const(&mut self, val: u64) -> &mut Self;
+    fn bool_const(&mut self, b: bool) -> &mut Self;
 }
 
 impl InstructionSinkExt for InstructionSink<'_> {
+    fn bool_const(&mut self, b: bool) -> &mut Self {
+        self.i32_const(b as i32)
+    }
+
     fn u32_const(&mut self, val: u32) -> &mut Self {
         self.i32_const(i32::from_ne_bytes(val.to_ne_bytes()))
     }
