@@ -4,12 +4,12 @@
 use std::alloc::{Layout, LayoutError};
 
 use super::{
+    BuildError, CompileContext,
     epsilon_closure::EpsilonClosureFunctions,
     lookaround::{LookFunctions, LookLayout},
     pattern::{PatternFunctions, PatternLayout},
     sparse_set::{SparseSetFunctions, SparseSetLayout},
     transition::{TransitionFunctions, TransitionLayout},
-    BuildError, CompileContext,
 };
 
 /// This type will be used to plan the WASM memory layout and precompute the

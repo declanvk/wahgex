@@ -1,32 +1,32 @@
 name: Rust CI
 
 on:
-    push:
-        branches: ["main"]
-    pull_request:
-        branches: ["main"]
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
 
 env:
-    CARGO_TERM_COLOR: always
+  CARGO_TERM_COLOR: always
 
 jobs:
-    test:
-        strategy:
-            fail-fast: true
-            matrix:
-                # 1.78 is the MSRV for the crate
-                rust: ["nightly", "beta", "stable", "1.85"]
+  test:
+    strategy:
+      fail-fast: true
+      matrix:
+        # 1.87 is the MSRV for the crate
+        rust: ["nightly", "beta", "stable", "1.87"]
 
-        runs-on: ubuntu-latest
-        steps:
-            - name: Checkout source
-              uses: actions/checkout@v3
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v3
 
-            - name: Install ${{matrix.rust}} toolchain
-              uses: dtolnay/rust-toolchain@master
-              with:
-                  toolchain: ${{matrix.rust}}
-                  components: rustfmt clippy
+      - name: Install ${{matrix.rust}} toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{matrix.rust}}
+          components: rustfmt clippy
 
-            - name: Run full test script
-              run: ./scripts/ci.sh "${{matrix.rust}}"
+      - name: Run full test script
+        run: ./scripts/ci.sh "${{matrix.rust}}"

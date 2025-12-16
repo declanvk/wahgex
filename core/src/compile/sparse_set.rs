@@ -22,12 +22,11 @@ use std::alloc::{Layout, LayoutError};
 
 use wasm_encoder::{BlockType, NameMap, ValType};
 
-use crate::util::repeat;
-
 use super::{
+    CompileContext,
     context::{Function, FunctionDefinition, FunctionIdx, FunctionSignature},
     instructions::InstructionSinkExt,
-    CompileContext,
+    util::repeat,
 };
 
 /// This struct describes the layout of a "sparse set", which is used to
@@ -270,7 +269,7 @@ impl SparseSetFunctions {
 pub mod tests {
     use regex_automata::nfa::thompson::NFA;
 
-    use crate::compile::tests::setup_interpreter;
+    use crate::RegexBytecode;
 
     use super::*;
 
@@ -349,10 +348,13 @@ pub mod tests {
         let (_overall, sparse_set_layout) =
             SparseSetLayout::with_num_states(5, overall, &state_id_layout).unwrap();
         let module_bytes = compile_test_module(&sparse_set_layout);
-        let (_engine, _module, mut store, instance) = setup_interpreter(module_bytes);
-        let (contains, insert) = get_sparse_set_fns(&instance, &store);
+        let module_bytes = RegexBytecode::from_bytes_unchecked(module_bytes);
+        let mut regex =
+            crate::engines::wasmi::Executor::with_engine(::wasmi::Engine::default(), &module_bytes)
+                .unwrap();
+        let (contains, insert) = get_sparse_set_fns(regex.instance(), regex.store());
 
-        let state_memory = instance.get_memory(&store, "state").unwrap();
+        let state_memory = regex.instance().get_memory(regex.store(), "state").unwrap();
 
         let set_ptr = i64::from_ne_bytes(
             u64::try_from(sparse_set_layout.set_start_pos)
@@ -361,28 +363,38 @@ pub mod tests {
         );
         let set_len = 0;
 
-        let res = contains.call(&mut store, (set_ptr, set_len, 0)).unwrap();
+        let res = contains
+            .call(regex.store_mut(), (set_ptr, set_len, 0))
+            .unwrap();
         // true because 0 was not present in the set
         assert_eq!(res, false as i32);
 
-        let set_len = insert.call(&mut store, (set_len, 0, set_ptr)).unwrap();
+        let set_len = insert
+            .call(regex.store_mut(), (set_len, 0, set_ptr))
+            .unwrap();
         assert_eq!(set_len, 1);
 
-        let res = contains.call(&mut store, (set_ptr, set_len, 0)).unwrap();
+        let res = contains
+            .call(regex.store_mut(), (set_ptr, set_len, 0))
+            .unwrap();
         // true because 0 is already present in the set
         assert_eq!(res, true as i32);
 
-        let set_len = insert.call(&mut store, (set_len, 0, set_ptr)).unwrap();
+        let set_len = insert
+            .call(regex.store_mut(), (set_len, 0, set_ptr))
+            .unwrap();
         assert_eq!(set_len, 1);
 
-        let res = contains.call(&mut store, (set_ptr, set_len, 0)).unwrap();
+        let res = contains
+            .call(regex.store_mut(), (set_ptr, set_len, 0))
+            .unwrap();
         // true because 0 is already present in the set
         assert_eq!(res, true as i32);
 
         let mut set_len = set_len;
         for state_id in 1..5 {
             let new_set_len = insert
-                .call(&mut store, (set_len, state_id, set_ptr))
+                .call(regex.store_mut(), (set_len, state_id, set_ptr))
                 .unwrap();
             assert_eq!(new_set_len, set_len + 1);
             set_len = new_set_len;
@@ -390,7 +402,7 @@ pub mod tests {
 
         for state_id in 0..5 {
             let res = contains
-                .call(&mut store, (set_ptr, set_len, state_id))
+                .call(regex.store_mut(), (set_ptr, set_len, state_id))
                 .unwrap();
             // true because state is already present in the set
             assert_eq!(res, true as i32, "{state_id} should be present");
@@ -398,7 +410,7 @@ pub mod tests {
 
         #[rustfmt::skip]
         assert_eq!(
-            &state_memory.data(&store)[..(state_id_layout.size() * 5 * 2)],
+            &state_memory.data(regex.store())[..(state_id_layout.size() * 5 * 2)],
             &[
                 0, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0, 4, 0, 0, 0,
                 0, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0, 4, 0, 0, 0,
@@ -407,7 +419,9 @@ pub mod tests {
 
         // Reset length, now set is empty
         for state_id in 0..5 {
-            let res = contains.call(&mut store, (set_ptr, 0, state_id)).unwrap();
+            let res = contains
+                .call(regex.store_mut(), (set_ptr, 0, state_id))
+                .unwrap();
             // true because state is already present in the set
             assert_eq!(res, false as i32, "{state_id} should not be present");
         }
@@ -422,17 +436,20 @@ pub mod tests {
         let (_overall, sparse_set_layout) =
             SparseSetLayout::with_num_states(5, overall, &state_id_layout).unwrap();
         let module_bytes = compile_test_module(&sparse_set_layout);
-        let (_engine, _module, mut store, instance) = setup_interpreter(module_bytes);
-        let (contains, insert) = get_sparse_set_fns(&instance, &store);
+        let module_bytes = RegexBytecode::from_bytes_unchecked(module_bytes);
+        let mut regex =
+            crate::engines::wasmi::Executor::with_engine(::wasmi::Engine::default(), &module_bytes)
+                .unwrap();
+        let (contains, insert) = get_sparse_set_fns(regex.instance(), regex.store());
 
-        let state_memory = instance.get_memory(&store, "state").unwrap();
+        let state_memory = regex.instance().get_memory(regex.store(), "state").unwrap();
 
         let set_ptr = 0;
         let mut set_len = 0;
 
         for state_id in [4, 1, 0, 2, 3] {
             let res = contains
-                .call(&mut store, (set_ptr, set_len, state_id))
+                .call(regex.store_mut(), (set_ptr, set_len, state_id))
                 .unwrap();
             // true because state is not present in the set
             assert_eq!(res, false as i32, "{state_id} should not be present");
@@ -442,7 +459,7 @@ pub mod tests {
 
         for state_id in [4, 1, 0, 2, 3] {
             let new_set_len = insert
-                .call(&mut store, (set_len, state_id, set_ptr))
+                .call(regex.store_mut(), (set_len, state_id, set_ptr))
                 .unwrap();
             // true because state_id was not present in the set
             assert_eq!(new_set_len, set_len + 1);
@@ -451,7 +468,7 @@ pub mod tests {
 
         for state_id_check in [4, 1, 0, 2, 3] {
             let res = contains
-                .call(&mut store, (set_ptr, set_len, state_id_check))
+                .call(regex.store_mut(), (set_ptr, set_len, state_id_check))
                 .unwrap();
             // true because state is already present in the set
             assert_eq!(res, true as i32, "{state_id_check} should be present");
@@ -459,7 +476,7 @@ pub mod tests {
 
         #[rustfmt::skip]
         assert_eq!(
-            &state_memory.data(&store)[..(state_id_layout.size() * 5 * 2)],
+            &state_memory.data(regex.store())[..(state_id_layout.size() * 5 * 2)],
             &[
                 4, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0,
                 2, 0, 0, 0, 1, 0, 0, 0, 3, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0
@@ -476,47 +493,60 @@ pub mod tests {
         let (_overall, sparse_set_layout) =
             SparseSetLayout::with_num_states(512, overall, &state_id_layout).unwrap();
         let module_bytes = compile_test_module(&sparse_set_layout);
-        let (_engine, _module, mut store, instance) = setup_interpreter(module_bytes);
-        let (contains, insert) = get_sparse_set_fns(&instance, &store);
+        let module_bytes = RegexBytecode::from_bytes_unchecked(module_bytes);
+        let mut regex =
+            crate::engines::wasmi::Executor::with_engine(::wasmi::Engine::default(), &module_bytes)
+                .unwrap();
+        let (contains, insert) = get_sparse_set_fns(regex.instance(), regex.store());
 
-        let state_memory = instance.get_memory(&store, "state").unwrap();
+        let state_memory = regex.instance().get_memory(regex.store(), "state").unwrap();
 
         let set_ptr = 0;
         let set_len = 0;
 
-        let res = contains.call(&mut store, (set_ptr, set_len, 511)).unwrap();
+        let res = contains
+            .call(regex.store_mut(), (set_ptr, set_len, 511))
+            .unwrap();
         assert_eq!(res, false as i32);
 
-        let set_len = insert.call(&mut store, (set_len, 256, set_ptr)).unwrap();
+        let set_len = insert
+            .call(regex.store_mut(), (set_len, 256, set_ptr))
+            .unwrap();
         assert_eq!(set_len, 1);
 
-        let set_len = insert.call(&mut store, (set_len, 511, set_ptr)).unwrap();
+        let set_len = insert
+            .call(regex.store_mut(), (set_len, 511, set_ptr))
+            .unwrap();
         assert_eq!(set_len, 2);
 
-        let res = contains.call(&mut store, (set_ptr, set_len, 511)).unwrap();
+        let res = contains
+            .call(regex.store_mut(), (set_ptr, set_len, 511))
+            .unwrap();
         assert_eq!(res, true as i32);
-        let res = contains.call(&mut store, (set_ptr, set_len, 256)).unwrap();
+        let res = contains
+            .call(regex.store_mut(), (set_ptr, set_len, 256))
+            .unwrap();
         assert_eq!(res, true as i32);
 
         // dense entries
         assert_eq!(
-            &state_memory.data(&store)[0..state_id_layout.size()],
+            &state_memory.data(regex.store())[0..state_id_layout.size()],
             &[0, 1, 0, 0]
         );
         assert_eq!(
-            &state_memory.data(&store)[state_id_layout.size()..(2 * state_id_layout.size())],
+            &state_memory.data(regex.store())[state_id_layout.size()..(2 * state_id_layout.size())],
             &[255, 1, 0, 0]
         );
 
         // sparse entries
         assert_eq!(
-            &state_memory.data(&store)[(sparse_set_layout.sparse_array_offset
+            &state_memory.data(regex.store())[(sparse_set_layout.sparse_array_offset
                 + 256 * state_id_layout.size())
                 ..(sparse_set_layout.sparse_array_offset + 257 * state_id_layout.size())],
             &[0, 0, 0, 0]
         );
         assert_eq!(
-            &state_memory.data(&store)[(sparse_set_layout.sparse_array_offset
+            &state_memory.data(regex.store())[(sparse_set_layout.sparse_array_offset
                 + 511 * state_id_layout.size())
                 ..(sparse_set_layout.sparse_array_offset + 512 * state_id_layout.size())],
             &[1, 0, 0, 0]

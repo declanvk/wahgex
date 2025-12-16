@@ -5,6 +5,6 @@ edition = "2024"
 publish = false
 
 [dependencies]
-wahgex-core = { path = "../core", version = "0.1" }
+wahgex = { path = "../core", version = "0.1" }
 wasmparser = { workspace = true }
 wasmprinter = { workspace = true }

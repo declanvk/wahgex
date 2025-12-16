@@ -6,14 +6,13 @@ use std::alloc::{Layout, LayoutError};
 use regex_automata::nfa::thompson::NFA;
 use wasm_encoder::{NameMap, ValType};
 
-use crate::util::repeat;
-
 use super::{
     context::{
         ActiveDataSegment, CompileContext, Function, FunctionDefinition, FunctionIdx,
         FunctionSignature,
     },
     instructions::InstructionSinkExt,
+    util::repeat,
 };
 
 /// TODO: Write docs for this item

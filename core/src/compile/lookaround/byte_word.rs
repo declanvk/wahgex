@@ -1,7 +1,7 @@
 use std::alloc::{Layout, LayoutError};
 
-use crate::{
-    compile::context::{ActiveDataSegment, CompileContext},
+use crate::compile::{
+    context::{ActiveDataSegment, CompileContext},
     util::repeat,
 };
 

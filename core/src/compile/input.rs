@@ -3,56 +3,15 @@
 
 use std::alloc::{Layout, LayoutError};
 
-use regex_automata::{nfa::thompson::NFA, Anchored};
+use regex_automata::nfa::thompson::NFA;
 use wasm_encoder::{BlockType, NameMap, ValType};
 
-use crate::compile::instructions::InstructionSinkExt;
+use crate::{compile::instructions::InstructionSinkExt, input::PrepareInputResult};
 
 use super::context::{
     BlockSignature, CompileContext, Function, FunctionDefinition, FunctionIdx, FunctionSignature,
     TypeIdx,
 };
-
-/// This type is a mirror of [`regex_automata::Input`], with guaranteed
-/// alignment and no-substructs.
-#[derive(Debug)]
-#[repr(C)]
-pub struct InputOpts {
-    /// Whether to execute an "earliest" search or not.
-    pub earliest: i32,
-    /// Sets the anchor mode of a search.
-    ///
-    /// The translation:
-    ///   - [`Anchored::No`] => `0`
-    ///   - [`Anchored::Yes`] => `1`
-    ///   - [`Anchored::Pattern`] => `2`
-    pub anchored: i32,
-    /// If `anchored` is equivalent to [`Anchored::Pattern`], then this is the
-    /// [`PatternID`][regex_automata::util::primitives::PatternID].
-    ///
-    /// Otherwise, it is set to 0.
-    pub anchored_pattern: i32,
-}
-
-impl InputOpts {
-    /// Creates a new `InputOpts` from a [`regex_automata::Input`].
-    ///
-    /// This translates the anchor mode and earliest flag into i32 values
-    /// suitable for WASM.
-    pub fn new(input: &regex_automata::Input<'_>) -> InputOpts {
-        let (anchored, anchored_pattern) = match input.get_anchored() {
-            Anchored::No => (0, 0),
-            Anchored::Yes => (1, 0),
-            Anchored::Pattern(id) => (2, i32::from_ne_bytes(id.to_ne_bytes())),
-        };
-
-        InputOpts {
-            earliest: input.get_earliest() as i32,
-            anchored,
-            anchored_pattern,
-        }
-    }
-}
 
 /// Defines the memory layout for input-related data within the WebAssembly
 /// module.
@@ -492,27 +451,13 @@ impl InputFunctions {
     }
 }
 
-/// This enum represents the results of the `prepare_input` function.
-#[derive(Debug)]
-pub enum PrepareInputResult {
-    /// Indicates that the input preparation was successful and no memory growth
-    /// was needed.
-    SuccessNoGrowth = 0,
-    /// Indicates that the input preparation was successful and memory was grown
-    /// to accommodate the haystack.
-    SuccessGrowth = 1,
-    /// Indicates that input preparation failed, likely due to an inability to
-    /// grow memory.
-    Failure = 2,
-}
-
 #[cfg(test)]
 mod tests {
     use regex_automata::nfa::thompson::NFA;
 
-    use crate::compile::{
-        pattern::{PatternFunctions, PatternLayout},
-        tests::setup_interpreter,
+    use crate::{
+        RegexBytecode,
+        compile::pattern::{PatternFunctions, PatternLayout},
     };
 
     use super::*;
@@ -537,45 +482,52 @@ mod tests {
 
         let module = ctx.compile(&state_overall);
         let module_bytes = module.finish();
-        let (_engine, _module, mut store, instance) = setup_interpreter(&module_bytes);
-        let haystack_memory = instance.get_memory(&store, "haystack").unwrap();
-        let prepare_input = instance
-            .get_typed_func::<i64, i32>(&store, "prepare_input")
+        let module_bytes = RegexBytecode::from_bytes_unchecked(module_bytes);
+        let mut regex =
+            crate::engines::wasmi::Executor::with_engine(::wasmi::Engine::default(), &module_bytes)
+                .unwrap();
+        let haystack_memory = regex
+            .instance()
+            .get_memory(regex.store(), "haystack")
+            .unwrap();
+        let prepare_input = regex
+            .instance()
+            .get_typed_func::<i64, i32>(regex.store(), "prepare_input")
             .unwrap();
 
-        let haystack_size = haystack_memory.size(&store);
+        let haystack_size = haystack_memory.size(regex.store());
         assert_eq!(haystack_size, 1);
 
         let haystack_len = 0;
-        let res = prepare_input.call(&mut store, haystack_len).unwrap();
+        let res = prepare_input.call(regex.store_mut(), haystack_len).unwrap();
         assert_eq!(res, PrepareInputResult::SuccessNoGrowth as i32);
 
-        let haystack_size = haystack_memory.size(&store);
+        let haystack_size = haystack_memory.size(regex.store());
         assert_eq!(haystack_size, 1);
 
         let haystack_len = 1;
-        let res = prepare_input.call(&mut store, haystack_len).unwrap();
+        let res = prepare_input.call(regex.store_mut(), haystack_len).unwrap();
         assert_eq!(res, PrepareInputResult::SuccessNoGrowth as i32);
 
-        let haystack_size = haystack_memory.size(&store);
+        let haystack_size = haystack_memory.size(regex.store());
         assert_eq!(haystack_size, 1);
 
         // This haystack_len should fill the entire extent of the default-sized haystack
         // memory
         let haystack_len = i64::try_from(page_size - input_layout._overall.size()).unwrap();
-        let res = prepare_input.call(&mut store, haystack_len).unwrap();
+        let res = prepare_input.call(regex.store_mut(), haystack_len).unwrap();
         assert_eq!(res, PrepareInputResult::SuccessNoGrowth as i32);
 
-        let haystack_size = haystack_memory.size(&store);
+        let haystack_size = haystack_memory.size(regex.store());
         assert_eq!(haystack_size, 1);
 
         // This haystack_len should cause the haystack memory to increase by 1 page size
         let haystack_len =
             i64::try_from(page_size - input_layout._overall.size() + page_size).unwrap();
-        let res = prepare_input.call(&mut store, haystack_len).unwrap();
+        let res = prepare_input.call(regex.store_mut(), haystack_len).unwrap();
         assert_eq!(res, PrepareInputResult::SuccessGrowth as i32);
 
-        let haystack_size = haystack_memory.size(&store);
+        let haystack_size = haystack_memory.size(regex.store());
         assert_eq!(haystack_size, 2);
 
         // Test case: num_new_page_required is negative
@@ -589,7 +541,7 @@ mod tests {
         // should return SuccessNoGrowth and memory should remain at 2 pages.
         let haystack_len_for_negative_case = 1_i64; // Fits in 1 page
         let res = prepare_input
-            .call(&mut store, haystack_len_for_negative_case)
+            .call(regex.store_mut(), haystack_len_for_negative_case)
             .unwrap();
         assert_eq!(
             res,
@@ -597,7 +549,7 @@ mod tests {
             "Should be SuccessNoGrowth when current pages > required pages"
         );
         assert_eq!(
-            haystack_memory.size(&store),
+            haystack_memory.size(regex.store()),
             2,
             "Memory size should remain 2 pages"
         );

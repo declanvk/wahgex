@@ -1,40 +1,37 @@
 use std::{env, iter};
 
-use wahgex_core::PikeVM;
+use wahgex::{Builder, RegexBytecode, RegexContext};
 
 fn main() {
     let input = env::args().nth(1).unwrap();
 
-    let regex = wahgex_core::PikeVM::new(&input).unwrap();
+    let (bytecode, context) = Builder::new().build(&input).unwrap();
 
-    eprint_input_info(&input, &regex);
+    eprint_input_info(&input, &bytecode, &context);
 
-    let pretty_wasm = wasm_print_module(regex.get_wasm());
+    let pretty_wasm = wasm_print_module(bytecode);
 
     println!("{pretty_wasm}");
 }
 
-fn eprint_input_info(input: &str, regex: &PikeVM) {
+fn eprint_input_info(input: &str, bytecode: &RegexBytecode, context: &RegexContext) {
     eprint_fields(&[
         ("input", input.into()),
-        ("module size", regex.get_wasm().len().to_string()),
-        ("states", regex.get_nfa().states().len().to_string()),
-        ("pattern len", regex.get_nfa().pattern_len().to_string()),
-        ("has capture?", regex.get_nfa().has_capture().to_string()),
-        ("has empty?", regex.get_nfa().has_empty().to_string()),
-        ("is utf8?", regex.get_nfa().is_utf8().to_string()),
-        ("is reverse?", regex.get_nfa().is_reverse().to_string()),
+        ("module size", bytecode.as_ref().len().to_string()),
+        ("states", context.nfa.states().len().to_string()),
+        ("pattern len", context.nfa.pattern_len().to_string()),
+        ("has capture?", context.nfa.has_capture().to_string()),
+        ("has empty?", context.nfa.has_empty().to_string()),
+        ("is utf8?", context.nfa.is_utf8().to_string()),
+        ("is reverse?", context.nfa.is_reverse().to_string()),
+        ("lookset any", format!("{:?}", context.nfa.look_set_any())),
         (
-            "lookset any",
-            format!("{:?}", regex.get_nfa().look_set_any()),
+            "lookset prefix any",
+            format!("{:?}", context.nfa.look_set_prefix_any()),
         ),
         (
             "lookset prefix any",
-            format!("{:?}", regex.get_nfa().look_set_prefix_any()),
-        ),
-        (
-            "lookset prefix any",
-            format!("{:?}", regex.get_nfa().look_set_prefix_any()),
+            format!("{:?}", context.nfa.look_set_prefix_any()),
         ),
     ]);
 }

@@ -1,29 +1,43 @@
 [package]
-name = "wahgex-core"
+name = "wahgex"
 version = "0.1.0"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/declanvk/wahgex"
 readme = "README.md"
 keywords = []
 categories = []
-edition = "2021"
-rust-version = "1.76"
+edition = "2024"
+rust-version = "1.87"
 
 [dependencies]
-regex-automata = "0.4.9"
+regex-automata = { version = "0.4.9" }
 wasm-encoder = { version = "0.228.0", default-features = false, features = [
     "std",
-] }
-zerocopy = { version = "0.8.24", features = ["derive", "std"] }
+], optional = true }
+wasmi = { workspace = true, optional = true }
+wasmparser = { workspace = true }
 
 [dev-dependencies]
 insta = "1.42.2"
 rayon = "1.10.0"
 regex-test = { workspace = true }
-wasmi = { workspace = true }
-wasmparser = { workspace = true }
+wahgex = { path = ".", features = [
+    "wasmi",
+    "compile",
+], default-features = false }
 wasmprinter = { workspace = true }
+
+[features]
+default = ["compile"]
+compile = ["dep:wasm-encoder"]
+wasmi = ["dep:wasmi"]
 
 [[test]]
 path = "tests/integration.rs"
 name = "integration"
+required-features = ["wasmi", "compile"]
+
+[[test]]
+path = "tests/wasm_module_size.rs"
+name = "wasm_module_size"
+required-features = ["compile"]

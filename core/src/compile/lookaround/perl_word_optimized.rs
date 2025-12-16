@@ -6,15 +6,13 @@ use std::{
 
 use wasm_encoder::{BlockType, MemArg, NameMap, ValType};
 
-use crate::{
-    compile::{
-        context::{
-            ActiveDataSegment, CompileContext, Function, FunctionDefinition, FunctionIdx,
-            FunctionSignature,
-        },
-        instructions::InstructionSinkExt,
-        lookaround::{byte_word::IsWordByteLookupTable, perl_word::PERL_WORD},
+use crate::compile::{
+    context::{
+        ActiveDataSegment, CompileContext, Function, FunctionDefinition, FunctionIdx,
+        FunctionSignature,
     },
+    instructions::InstructionSinkExt,
+    lookaround::{byte_word::IsWordByteLookupTable, perl_word::PERL_WORD},
     util::repeat,
 };
 #[derive(Debug)]
@@ -23,7 +21,6 @@ struct PerlWordLookupTable {
     leaves: Vec<u8>,
 }
 
-#[expect(clippy::incompatible_msrv)]
 static TABLE_INSTANCE: LazyLock<PerlWordLookupTable> = LazyLock::new(PerlWordLookupTable::new);
 
 impl PerlWordLookupTable {
@@ -1009,7 +1006,7 @@ mod tests {
 
     use regex_automata::nfa::thompson::NFA;
 
-    use crate::{compile::tests::setup_interpreter, Config};
+    use crate::{Config, RegexBytecode};
 
     use super::*;
 
@@ -1044,47 +1041,31 @@ mod tests {
         assert_eq!(mem::size_of_val(PERL_WORD), 6416);
     }
 
-    struct TestSetup {
-        _engine: wasmi::Engine,
-        _module: wasmi::Module,
-        store: wasmi::Store<()>,
-        instance: wasmi::Instance,
-    }
+    fn setup() -> crate::engines::wasmi::Executor {
+        let cfg = Config::new().export_all_functions(true).export_state(true);
+        let mut ctx = CompileContext::new(NFA::always_match(), cfg);
+        let overall = Layout::new::<()>();
+        let (overall, is_word_byte_table) = IsWordByteLookupTable::new(&mut ctx, overall).unwrap();
+        let (overall, perl_world_table_layout) = PerlWordLayout::new(&mut ctx, overall).unwrap();
+        let _funcs =
+            PerlWordFunctions::new(&mut ctx, &perl_world_table_layout, &is_word_byte_table);
 
-    impl TestSetup {
-        fn setup() -> Self {
-            let cfg = Config::new().export_all_functions(true).export_state(true);
-            let mut ctx = CompileContext::new(NFA::always_match(), cfg);
-            let overall = Layout::new::<()>();
-            let (overall, is_word_byte_table) =
-                IsWordByteLookupTable::new(&mut ctx, overall).unwrap();
-            let (overall, perl_world_table_layout) =
-                PerlWordLayout::new(&mut ctx, overall).unwrap();
-            let _funcs =
-                PerlWordFunctions::new(&mut ctx, &perl_world_table_layout, &is_word_byte_table);
+        assert_eq!(overall.align(), 1);
+        assert_eq!(overall.size(), 7469);
 
-            assert_eq!(overall.align(), 1);
-            assert_eq!(overall.size(), 7469);
-
-            let module = ctx.compile(&overall);
-            let module_bytes = module.finish();
-            let (engine, module, store, instance) = setup_interpreter(&module_bytes);
-
-            Self {
-                _engine: engine,
-                _module: module,
-                store,
-                instance,
-            }
-        }
+        let module = ctx.compile(&overall);
+        let module_bytes = module.finish();
+        let module_bytes = RegexBytecode::from_bytes_unchecked(module_bytes);
+        crate::engines::wasmi::Executor::with_engine(::wasmi::Engine::default(), &module_bytes)
+            .unwrap()
     }
 
     #[test]
     fn is_word_character() {
-        let mut setup = TestSetup::setup();
-        let utf8_is_word_character = setup
-            .instance
-            .get_typed_func::<(i32,), i32>(&setup.store, "utf8_is_word_character")
+        let mut regex = setup();
+        let utf8_is_word_character = regex
+            .instance()
+            .get_typed_func::<(i32,), i32>(regex.store(), "utf8_is_word_character")
             .unwrap();
 
         fn char_to_i32(c: char) -> i32 {
@@ -1095,7 +1076,7 @@ mod tests {
 
         let mut check = |c: char, expected: bool| {
             let res = utf8_is_word_character
-                .call(&mut setup.store, (char_to_i32(c),))
+                .call(regex.store_mut(), (char_to_i32(c),))
                 .unwrap();
             let non_wasm_is_word = perl_word_table.is_word_character_test(c);
             let is_word = res != 0;
@@ -1136,26 +1117,29 @@ mod tests {
 
     #[test]
     fn is_word_char_rev_and_fwd() {
-        let mut setup = TestSetup::setup();
+        let mut regex = setup();
 
-        let haystack_mem = setup.instance.get_memory(&setup.store, "haystack").unwrap();
-        let is_word_char_fwd = setup
-            .instance
-            .get_typed_func::<(i64, i64, i64), i32>(&setup.store, "utf8_is_word_char_fwd")
+        let haystack_mem = regex
+            .instance()
+            .get_memory(regex.store(), "haystack")
             .unwrap();
-        let is_word_char_rev = setup
-            .instance
-            .get_typed_func::<(i64, i64, i64), i32>(&setup.store, "utf8_is_word_char_rev")
+        let is_word_char_fwd = regex
+            .instance()
+            .get_typed_func::<(i64, i64, i64), i32>(regex.store(), "utf8_is_word_char_fwd")
+            .unwrap();
+        let is_word_char_rev = regex
+            .instance()
+            .get_typed_func::<(i64, i64, i64), i32>(regex.store(), "utf8_is_word_char_rev")
             .unwrap();
 
         let mut run_test = |haystack: &[u8], expected_fwd: &[bool], expected_rev: &[bool]| {
-            haystack_mem.write(&mut setup.store, 0, haystack).unwrap();
+            haystack_mem.write(regex.store_mut(), 0, haystack).unwrap();
             let haystack_len = haystack.len() as i64;
 
             for i in 0..=haystack.len() {
                 let at = i as i64;
                 let res_rev = is_word_char_rev
-                    .call(&mut setup.store, (0, haystack_len, at))
+                    .call(regex.store_mut(), (0, haystack_len, at))
                     .unwrap();
                 assert_eq!(
                     res_rev != 0,
@@ -1166,7 +1150,7 @@ mod tests {
                 );
 
                 let res_fwd = is_word_char_fwd
-                    .call(&mut setup.store, (0, haystack_len, at))
+                    .call(regex.store_mut(), (0, haystack_len, at))
                     .unwrap();
                 assert_eq!(
                     res_fwd != 0,
@@ -1177,7 +1161,7 @@ mod tests {
                 );
             }
 
-            haystack_mem.data_mut(&mut setup.store)[..haystack.len()].fill(0); // clear previous test memory
+            haystack_mem.data_mut(regex.store_mut())[..haystack.len()].fill(0); // clear previous test memory
         };
 
         // Haystack: `a b`

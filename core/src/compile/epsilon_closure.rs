@@ -12,9 +12,9 @@ use wasm_encoder::{BlockType, NameMap, ValType};
 use crate::compile::instructions::InstructionSinkExt;
 
 use super::{
+    BuildError, CompileContext,
     context::{Function, FunctionDefinition, FunctionIdx, FunctionSignature},
     lookaround::LookFunctions,
-    BuildError, CompileContext,
 };
 
 /// This struct contains a map of functions that are the pre-computed epsilon
@@ -378,10 +378,12 @@ mod tests {
 
     use regex_automata::nfa::thompson::NFA;
 
-    use crate::compile::{
-        lookaround::LookLayout,
-        sparse_set::{SparseSetFunctions, SparseSetLayout},
-        tests::setup_interpreter,
+    use crate::{
+        RegexBytecode,
+        compile::{
+            lookaround::LookLayout,
+            sparse_set::{SparseSetFunctions, SparseSetLayout},
+        },
     };
 
     use super::*;
@@ -566,19 +568,26 @@ mod tests {
 
     fn setup_epsilon_closure_test(nfa: NFA, haystack: &[u8]) -> impl FnMut(i32, i64, &[u8]) + '_ {
         let module_bytes = compile_test_module(nfa.clone());
-        let (_engine, _module, mut store, instance) = setup_interpreter(&module_bytes);
-        let branch_to_epsilon_closure = instance
+        let module_bytes = RegexBytecode::from_bytes_unchecked(module_bytes);
+        let mut regex =
+            crate::engines::wasmi::Executor::with_engine(::wasmi::Engine::default(), &module_bytes)
+                .unwrap();
+        let branch_to_epsilon_closure = regex
+            .instance()
             .get_typed_func::<(i64, i64, i64, i64, i32, i32), i32>(
-                &store,
+                regex.store(),
                 "branch_to_epsilon_closure",
             )
             .unwrap();
 
-        let state_memory = instance.get_memory(&store, "state").unwrap();
-        let haystack_memory = instance.get_memory(&store, "haystack").unwrap();
+        let state_memory = regex.instance().get_memory(regex.store(), "state").unwrap();
+        let haystack_memory = regex
+            .instance()
+            .get_memory(regex.store(), "haystack")
+            .unwrap();
 
         // Assuming that haystack starts at 0
-        haystack_memory.data_mut(&mut store)[0..haystack.len()].copy_from_slice(haystack);
+        haystack_memory.data_mut(regex.store_mut())[0..haystack.len()].copy_from_slice(haystack);
 
         move |state_id, at_offset: i64, expected_states: &[u8]| {
             let haystack_ptr = 0;
@@ -588,7 +597,7 @@ mod tests {
             let set_ptr = 0;
             let new_set_len = branch_to_epsilon_closure
                 .call(
-                    &mut store,
+                    regex.store_mut(),
                     (
                         haystack_ptr,
                         haystack_len,
@@ -619,7 +628,8 @@ mod tests {
 
             // Would be safer if we passed the layout through and we read the set start
             // position instead of assuming its at 0.
-            let states = &unsafe { state_memory.data(&store).align_to::<u8>().1 }[0..new_set_len];
+            let states =
+                &unsafe { state_memory.data(regex.store()).align_to::<u8>().1 }[0..new_set_len];
             assert_eq!(states, expected_states, "state [{state_id}] @ {at_offset}");
         }
     }
