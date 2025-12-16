@@ -1,4 +1,4 @@
-//! This module contains types and functions related to the actual PikeVM
+//! This module contains types and functions related to the actual Regex
 //! execution of `is_match`, `find`, `captures`, etc.
 
 use wasm_encoder::{BlockType, NameMap, ValType};

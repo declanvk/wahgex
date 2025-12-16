@@ -1,22 +1,27 @@
-//! `wahgex-core` is a library for compiling regular expressions into
+//! `wahgex` is a library for compiling regular expressions into
 //! WebAssembly modules that can be executed efficiently.
 
 #![deny(missing_docs, missing_debug_implementations)]
 #![warn(missing_debug_implementations)]
 
-use compile::{compile_from_nfa, CompiledRegex};
+use std::borrow::Cow;
 
-pub use crate::{
-    compile::input::{InputOpts, PrepareInputResult},
-    error::BuildError,
+#[cfg(feature = "compile")]
+use compile::compile_from_nfa;
+
+pub use crate::error::BuildError;
+pub use ::regex_automata::{
+    nfa::thompson::Config as RegexNFAConfig, util::syntax::Config as RegexSyntaxConfig,
 };
 
+#[cfg(feature = "compile")]
 mod compile;
+#[cfg(feature = "wasmi")]
+pub mod engines;
 mod error;
-mod runtime;
-mod util;
+mod input;
 
-/// Configuration options for building a [`PikeVM`].
+/// Configuration options for building a regular expression.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Config {
     #[cfg(test)]
@@ -84,7 +89,7 @@ impl Config {
     }
 }
 
-/// A builder for compiling regular expressions into a [`PikeVM`].
+/// A builder for compiling regular expressions into [`RegexBytecode`].
 #[derive(Clone, Debug)]
 pub struct Builder {
     config: Config,
@@ -105,34 +110,45 @@ impl Default for Builder {
 }
 
 impl Builder {
-    /// Creates a new PikeVM builder with its default configuration.
+    /// Creates a new regular expression builder with its default configuration.
     pub fn new() -> Builder {
         Self::default()
     }
 
-    /// Compiles a single regular expression pattern into a [`PikeVM`].
-    pub fn build(&self, pattern: &str) -> Result<PikeVM, BuildError> {
+    /// Compiles a single regular expression pattern into a [`RegexBytecode`]
+    /// and [`RegexContext`].
+    #[cfg(feature = "compile")]
+    pub fn build(&self, pattern: &str) -> Result<(RegexBytecode, RegexContext), BuildError> {
         self.build_many(&[pattern])
     }
 
-    /// Compiles multiple regular expression patterns into a single [`PikeVM`].
-    pub fn build_many<P: AsRef<str>>(&self, patterns: &[P]) -> Result<PikeVM, BuildError> {
+    /// Compiles multiple regular expression patterns into a single
+    /// [`RegexBytecode`] and [`RegexContext`].
+    #[cfg(feature = "compile")]
+    pub fn build_many<P: AsRef<str>>(
+        &self,
+        patterns: &[P],
+    ) -> Result<(RegexBytecode, RegexContext), BuildError> {
         let nfa = self.thompson.build_many(patterns)?;
         self.build_from_nfa(nfa)
     }
 
-    /// Compiles a Thompson NFA into a [`PikeVM`].
+    /// Compiles a Thompson NFA into a [`RegexBytecode`]
+    /// and [`RegexContext`].
+    #[cfg(feature = "compile")]
     pub fn build_from_nfa(
         &self,
         nfa: regex_automata::nfa::thompson::NFA,
-    ) -> Result<PikeVM, BuildError> {
+    ) -> Result<(RegexBytecode, RegexContext), BuildError> {
         nfa.look_set_any().available()?;
-        let wasm = compile_from_nfa(nfa.clone(), self.config)?;
-        Ok(PikeVM {
-            config: self.config,
-            nfa,
-            wasm,
-        })
+        let compiled = compile_from_nfa(nfa.clone(), self.config)?;
+        Ok((
+            compiled,
+            RegexContext {
+                config: self.config,
+                nfa,
+            },
+        ))
     }
 
     /// Configures the builder with the given [`Config`].
@@ -142,58 +158,29 @@ impl Builder {
     }
 
     /// Configures the syntax options for the underlying regex compiler.
-    pub fn syntax(&mut self, config: regex_automata::util::syntax::Config) -> &mut Builder {
+    pub fn syntax(&mut self, config: RegexSyntaxConfig) -> &mut Builder {
         self.thompson.syntax(config);
         self
     }
 
     /// Configures the Thompson NFA compiler options.
-    pub fn thompson(&mut self, config: regex_automata::nfa::thompson::Config) -> &mut Builder {
+    pub fn thompson(&mut self, config: RegexNFAConfig) -> &mut Builder {
         self.thompson.configure(config);
         self
     }
 }
 
-/// A compiled regular expression represented as a Pike VM, ready for matching.
+/// A compiled regular expression ready for matching.
 #[derive(Debug)]
-pub struct PikeVM {
-    config: Config,
-    nfa: regex_automata::nfa::thompson::NFA,
-    wasm: CompiledRegex,
+#[non_exhaustive]
+pub struct RegexContext {
+    /// TODO: Write docs for this item
+    pub config: Config,
+    /// TODO: Write docs for this item
+    pub nfa: ::regex_automata::nfa::thompson::NFA,
 }
 
-impl PikeVM {
-    /// Compiles a single regular expression pattern into a new [`PikeVM`] using
-    /// the default builder.
-    pub fn new(pattern: &str) -> Result<PikeVM, BuildError> {
-        PikeVM::builder().build(pattern)
-    }
-
-    /// Compiles multiple regular expression patterns into a single new
-    /// [`PikeVM`] using the default builder.
-    pub fn new_many<P: AsRef<str>>(patterns: &[P]) -> Result<PikeVM, BuildError> {
-        PikeVM::builder().build_many(patterns)
-    }
-
-    /// Creates a new [`PikeVM`] directly from a Thompson NFA using the default
-    /// builder.
-    pub fn new_from_nfa(nfa: regex_automata::nfa::thompson::NFA) -> Result<PikeVM, BuildError> {
-        PikeVM::builder().build_from_nfa(nfa)
-    }
-
-    /// Creates a [`PikeVM`] that always matches the empty string at any
-    /// position.
-    pub fn always_match() -> Result<PikeVM, BuildError> {
-        let nfa = regex_automata::nfa::thompson::NFA::always_match();
-        PikeVM::new_from_nfa(nfa)
-    }
-
-    /// Creates a [`PikeVM`] that never matches.
-    pub fn never_match() -> Result<PikeVM, BuildError> {
-        let nfa = regex_automata::nfa::thompson::NFA::never_match();
-        PikeVM::new_from_nfa(nfa)
-    }
-
+impl RegexContext {
     /// Returns a new default [`Config`] for configuring a [`Builder`].
     pub fn config() -> Config {
         Config::new()
@@ -203,39 +190,64 @@ impl PikeVM {
     pub fn builder() -> Builder {
         Builder::new()
     }
+}
 
-    /// Returns the number of patterns compiled into this PikeVM.
-    pub fn pattern_len(&self) -> usize {
-        self.nfa.pattern_len()
+/// Represents a regular expression that has been compiled into WebAssembly
+/// bytes.
+#[derive(Debug)]
+pub struct RegexBytecode {
+    bytes: Cow<'static, [u8]>,
+}
+
+impl RegexBytecode {
+    /// TODO: Write docs for this item
+    pub fn from_bytes_unchecked(bytes: impl Into<Vec<u8>>) -> Self {
+        Self {
+            bytes: bytes.into().into(),
+        }
     }
 
-    /// Return the config for this `PikeVM`.
-    ///
-    /// Note that this is the configuration used to *build* the PikeVM,
-    /// not necessarily the configuration used for a specific match operation.
-    #[inline]
-    pub fn get_config(&self) -> &Config {
-        &self.config
+    /// TODO: Write docs for this item
+    pub const fn from_static_bytes_unchecked(bytes: &'static [u8]) -> Self {
+        Self {
+            bytes: Cow::Borrowed(bytes),
+        }
     }
 
-    /// Returns a reference to the underlying NFA.
-    ///
-    /// This is the NFA that was compiled into the PikeVM.
-    #[inline]
-    pub fn get_nfa(&self) -> &regex_automata::nfa::thompson::NFA {
-        &self.nfa
+    /// TODO: Write docs for this item
+    pub fn from_bytes(bytes: impl Into<Vec<u8>>) -> Result<Self, BuildError> {
+        let bytes = bytes.into();
+        let types = wasmparser::validate(&bytes)?;
+        Self::validate_module_shape(types)?;
+
+        Ok(Self::from_bytes_unchecked(bytes))
     }
 
-    /// Returns a reference to the compiled WASM bytes.
-    ///
-    /// These bytes represent the compiled PikeVM logic.
-    #[inline]
-    pub fn get_wasm(&self) -> &[u8] {
-        self.wasm.as_ref()
+    /// TODO: Write docs for this item
+    pub fn from_static_bytes(bytes: &'static [u8]) -> Result<Self, BuildError> {
+        let types = wasmparser::validate(bytes)?;
+        Self::validate_module_shape(types)?;
+
+        Ok(Self::from_static_bytes_unchecked(bytes))
+    }
+
+    /// TODO: Write docs for this item
+    pub const fn as_ref(&self) -> &[u8] {
+        match &self.bytes {
+            Cow::Borrowed(bytes) => bytes,
+            Cow::Owned(bytes) => bytes.as_slice(),
+        }
+    }
+
+    fn validate_module_shape(_types: wasmparser::types::Types) -> Result<(), BuildError> {
+        // TODO: Implement this so that we validate the expected shape of the
+        // bytes
+        Ok(())
     }
 }
 
-impl PikeVM {
-    // TODO: Need to implement `is_match`, `find`, `captures`, `find_iter`,
-    // `captures_iter`
+impl AsRef<[u8]> for RegexBytecode {
+    fn as_ref(&self) -> &[u8] {
+        &self.bytes
+    }
 }

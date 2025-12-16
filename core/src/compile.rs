@@ -5,6 +5,7 @@ use input::{InputFunctions, InputLayout};
 use matching::MatchingFunctions;
 use state::{StateFunctions, StateLayout};
 
+use crate::RegexBytecode;
 pub use crate::error::BuildError;
 
 use self::context::CompileContext;
@@ -19,13 +20,14 @@ mod pattern;
 mod sparse_set;
 mod state;
 mod transition;
+mod util;
 
-/// Compiles a given Thompson NFA into a [`CompiledRegex`] WebAssembly module,
+/// Compiles a given Thompson NFA into a [`RegexBytecode`] WebAssembly module,
 /// using the provided configuration.
 pub fn compile_from_nfa(
     nfa: regex_automata::nfa::thompson::NFA,
     config: super::Config,
-) -> Result<CompiledRegex, BuildError> {
+) -> Result<RegexBytecode, BuildError> {
     let mut ctx = CompileContext::new(nfa, config);
     let state_layout = StateLayout::new(&mut ctx)?;
     let state_funcs = StateFunctions::new(&mut ctx, &state_layout)?;
@@ -41,48 +43,14 @@ pub fn compile_from_nfa(
     );
     let module: wasm_encoder::Module = ctx.compile(&state_layout.overall);
 
-    Ok(CompiledRegex {
-        wasm_bytes: module.finish(),
+    Ok(RegexBytecode {
+        bytes: module.finish().into(),
     })
-}
-
-/// Represents a regular expression that has been compiled into WebAssembly
-/// bytes.
-#[derive(Debug)]
-pub struct CompiledRegex {
-    wasm_bytes: Vec<u8>,
-}
-
-impl AsRef<[u8]> for CompiledRegex {
-    fn as_ref(&self) -> &[u8] {
-        &self.wasm_bytes
-    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    pub fn setup_interpreter(
-        module_bytes: impl AsRef<[u8]>,
-    ) -> (
-        wasmi::Engine,
-        wasmi::Module,
-        wasmi::Store<()>,
-        wasmi::Instance,
-    ) {
-        let engine = wasmi::Engine::default();
-        let module = wasmi::Module::new(&engine, module_bytes).unwrap();
-        let mut store = wasmi::Store::new(&engine, ());
-        let linker = wasmi::Linker::<()>::new(&engine);
-        let instance = linker
-            .instantiate(&mut store, &module)
-            .unwrap()
-            .start(&mut store)
-            .unwrap();
-
-        (engine, module, store, instance)
-    }
 
     #[track_caller]
     pub fn wasm_print_module(module_bytes: impl AsRef<[u8]>) -> String {
@@ -107,7 +75,7 @@ mod tests {
 
     /// A test helper function that compiles a regex pattern string into a
     /// [`CompiledRegex`].
-    fn compile(pattern: &str) -> Result<CompiledRegex, Box<dyn std::error::Error>> {
+    fn compile(pattern: &str) -> Result<RegexBytecode, Box<dyn std::error::Error>> {
         let nfa = regex_automata::nfa::thompson::NFA::new(pattern)?;
 
         Ok(compile_from_nfa(nfa, crate::Config::new())?)
@@ -163,7 +131,14 @@ mod tests {
     }
 
     #[test]
-    fn lookaround_is_ascii_word() {
+    fn lookaround_is_word_ascii() {
+        let compiled = compile(r"(?-u)hello\b").unwrap();
+        let pretty = wasm_print_module(&compiled);
+        insta::assert_snapshot!(pretty);
+    }
+
+    #[test]
+    fn lookaround_is_word_ascii_negate() {
         let compiled = compile(r"(?-u)hello\B").unwrap();
         let pretty = wasm_print_module(&compiled);
         insta::assert_snapshot!(pretty);
@@ -179,6 +154,34 @@ mod tests {
     #[test]
     fn lookaround_is_ascii_half_start_end() {
         let compiled = compile(r"(?-u:\b{start-half}hello\b{end-half})").unwrap();
+        let pretty = wasm_print_module(&compiled);
+        insta::assert_snapshot!(pretty);
+    }
+
+    #[test]
+    fn lookaround_is_word_unicode() {
+        let compiled = compile(r"(?u)hello\b").unwrap();
+        let pretty = wasm_print_module(&compiled);
+        insta::assert_snapshot!(pretty);
+    }
+
+    #[test]
+    fn lookaround_is_word_unicode_negate() {
+        let compiled = compile(r"(?u)hello\B").unwrap();
+        let pretty = wasm_print_module(&compiled);
+        insta::assert_snapshot!(pretty);
+    }
+
+    #[test]
+    fn lookaround_is_unicode_start_end() {
+        let compiled = compile(r"(?u:\b{start}hello\b{end})").unwrap();
+        let pretty = wasm_print_module(&compiled);
+        insta::assert_snapshot!(pretty);
+    }
+
+    #[test]
+    fn lookaround_is_unicode_half_start_end() {
+        let compiled = compile(r"(?u:\b{start-half}hello\b{end-half})").unwrap();
         let pretty = wasm_print_module(&compiled);
         insta::assert_snapshot!(pretty);
     }

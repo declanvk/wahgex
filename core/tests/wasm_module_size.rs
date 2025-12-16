@@ -3,10 +3,10 @@ use std::{collections::HashMap, fmt::Write};
 use common::configure_pikevm_builder;
 use rayon::iter::{ParallelBridge, ParallelIterator};
 use regex_test::{
-    anyhow::{self, Context},
     RegexTest,
+    anyhow::{self, Context},
 };
-use wahgex_core::{Builder, PikeVM};
+use wahgex::{Builder, RegexBytecode, RegexContext};
 
 mod common;
 
@@ -29,7 +29,7 @@ fn wasm_module_size_of() {
                 return None;
             }
 
-            let reg = match compile(PikeVM::builder(), test, test.regexes())
+            let (bytecode, _) = match compile(RegexContext::builder(), test, test.regexes())
                 .context(format!("compiling regex [{}]", test.full_name()))
                 .unwrap()
             {
@@ -41,7 +41,7 @@ fn wasm_module_size_of() {
 
             Some(WasmSizeResult {
                 group: test.group().into(),
-                size: reg.get_wasm().len(),
+                size: bytecode.as_ref().len(),
                 name: test.name().into(),
             })
         })
@@ -87,7 +87,7 @@ fn format_grouped_results(
 #[derive(Debug)]
 enum CompileOutput {
     Skip,
-    Compiled(PikeVM),
+    Compiled((RegexBytecode, RegexContext)),
 }
 
 fn compile(
@@ -99,12 +99,12 @@ fn compile(
         return Ok(CompileOutput::Skip);
     }
 
-    let re = match builder.build_many(regexes) {
+    let result = match builder.build_many(regexes) {
         Ok(re) => re,
         Err(err) => {
             return Err(err.into());
         },
     };
 
-    Ok(CompileOutput::Compiled(re))
+    Ok(CompileOutput::Compiled(result))
 }

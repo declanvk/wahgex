@@ -17,6 +17,7 @@ impl fmt::Display for BuildError {
             BuildErrorKind::Layout(err) => err.fmt(f),
             BuildErrorKind::NFABuild(err) => err.fmt(f),
             BuildErrorKind::LookaroundUnicode(err) => err.fmt(f),
+            BuildErrorKind::WasmBytesValidationError(err) => err.fmt(f),
         }
     }
 }
@@ -27,6 +28,7 @@ impl Error for BuildError {
             BuildErrorKind::Layout(err) => Some(err),
             BuildErrorKind::NFABuild(err) => Some(err),
             BuildErrorKind::LookaroundUnicode(err) => Some(err),
+            BuildErrorKind::WasmBytesValidationError(err) => Some(err),
         }
     }
 }
@@ -55,6 +57,14 @@ impl From<regex_automata::util::look::UnicodeWordBoundaryError> for BuildError {
     }
 }
 
+impl From<wasmparser::BinaryReaderError> for BuildError {
+    fn from(value: wasmparser::BinaryReaderError) -> Self {
+        Self {
+            kind: Box::new(BuildErrorKind::WasmBytesValidationError(value)),
+        }
+    }
+}
+
 /// Represents the specific kind of a [`BuildError`].
 ///
 /// This enum provides more granular information about the underlying cause of a
@@ -64,4 +74,5 @@ enum BuildErrorKind {
     Layout(LayoutError),
     NFABuild(regex_automata::nfa::thompson::BuildError),
     LookaroundUnicode(regex_automata::util::look::UnicodeWordBoundaryError),
+    WasmBytesValidationError(wasmparser::BinaryReaderError),
 }

@@ -8,21 +8,20 @@ use std::{
 };
 
 use regex_automata::{
-    nfa::thompson::{DenseTransitions, SparseTransitions, State, Transition, NFA},
+    nfa::thompson::{DenseTransitions, NFA, SparseTransitions, State, Transition},
     util::primitives::StateID,
 };
 use wasm_encoder::{BlockType, InstructionSink, MemArg, NameMap, ValType};
 
-use crate::util::repeat;
-
 use super::{
+    CompileContext,
     context::{
         ActiveDataSegment, BlockSignature, Function, FunctionDefinition, FunctionIdx,
         FunctionSignature, TypeIdx,
     },
     epsilon_closure::EpsilonClosureFunctions,
     instructions::InstructionSinkExt,
-    CompileContext,
+    util::repeat,
 };
 
 const SPARSE_RANGE_LOOKUP_TABLE_ELEM: Layout = const {
@@ -869,10 +868,12 @@ impl TransitionFunctions {
 
 #[cfg(test)]
 mod tests {
-    use crate::compile::{
-        lookaround::{LookFunctions, LookLayout},
-        sparse_set::{tests::get_sparse_set_fns, SparseSetFunctions, SparseSetLayout},
-        tests::setup_interpreter,
+    use crate::{
+        RegexBytecode,
+        compile::{
+            lookaround::{LookFunctions, LookLayout},
+            sparse_set::{SparseSetFunctions, SparseSetLayout, tests::get_sparse_set_fns},
+        },
     };
 
     use super::*;
@@ -904,20 +905,27 @@ mod tests {
             TransitionFunctions::new(&mut ctx, &epsilon_closures, &transition_layout);
 
         let module_bytes = ctx.compile(&overall).finish();
-        let (_engine, _module, mut store, instance) = setup_interpreter(&module_bytes);
+        let module_bytes = RegexBytecode::from_bytes_unchecked(module_bytes);
+        let mut regex =
+            crate::engines::wasmi::Executor::with_engine(::wasmi::Engine::default(), &module_bytes)
+                .unwrap();
 
-        let branch_to_transition = instance
+        let branch_to_transition = regex
+            .instance()
             .get_typed_func::<(i64, i64, i64, i64, i32, i32), (i32, i32)>(
-                &store,
+                regex.store(),
                 "branch_to_transition",
             )
             .unwrap();
 
-        let haystack_memory = instance.get_memory(&store, "haystack").unwrap();
-        let state_memory = instance.get_memory(&store, "state").unwrap();
+        let haystack_memory = regex
+            .instance()
+            .get_memory(regex.store(), "haystack")
+            .unwrap();
+        let state_memory = regex.instance().get_memory(regex.store(), "state").unwrap();
 
         // Write haystack byte into memory ahead of transition call
-        haystack_memory.data_mut(&mut store)[0..haystack.len()].copy_from_slice(haystack);
+        haystack_memory.data_mut(regex.store_mut())[0..haystack.len()].copy_from_slice(haystack);
 
         move |state_id: i32,
               at_offset: usize,
@@ -930,7 +938,7 @@ mod tests {
 
             let (new_set_len, is_match) = branch_to_transition
                 .call(
-                    &mut store,
+                    regex.store_mut(),
                     (
                         haystack_ptr,
                         haystack_len,
@@ -950,7 +958,7 @@ mod tests {
                 byte as char
             );
 
-            let states = &unsafe { state_memory.data(&store).align_to::<u8>().1 }
+            let states = &unsafe { state_memory.data(regex.store()).align_to::<u8>().1 }
                 [0..usize::try_from(new_set_len).unwrap()];
             assert_eq!(
                 states, expected_next_states,
@@ -1147,21 +1155,28 @@ mod tests {
             TransitionFunctions::new(&mut ctx, &epsilon_closures, &transition_layout);
 
         let module_bytes = ctx.compile(&overall).finish();
-        let (_engine, _module, mut store, instance) = setup_interpreter(&module_bytes);
+        let module_bytes = RegexBytecode::from_bytes_unchecked(module_bytes);
+        let mut regex =
+            crate::engines::wasmi::Executor::with_engine(::wasmi::Engine::default(), &module_bytes)
+                .unwrap();
 
-        let make_current_transitions = instance
+        let make_current_transitions = regex
+            .instance()
             // [haystack_ptr, haystack_len, at_offset, current_set_ptr, current_set_len,
             // next_set_ptr, next_set_len]
             .get_typed_func::<(i64, i64, i64, i64, i32, i64, i32), (i32, i32)>(
-                &store,
+                regex.store(),
                 "make_current_transitions",
             )
             .unwrap();
 
-        let (_, set_insert) = get_sparse_set_fns(&instance, &store);
+        let (_, set_insert) = get_sparse_set_fns(regex.instance(), regex.store());
 
-        let haystack_memory = instance.get_memory(&store, "haystack").unwrap();
-        let state_memory = instance.get_memory(&store, "state").unwrap();
+        let haystack_memory = regex
+            .instance()
+            .get_memory(regex.store(), "haystack")
+            .unwrap();
+        let state_memory = regex.instance().get_memory(regex.store(), "state").unwrap();
 
         move |current_states: &[i32],
               byte: u8,
@@ -1176,17 +1191,21 @@ mod tests {
             let next_set_len = 0;
 
             // Write haystack byte into memory ahead of transition call
-            haystack_memory.data_mut(&mut store)[haystack_ptr as usize + at_offset as usize] = byte;
+            haystack_memory.data_mut(regex.store_mut())
+                [haystack_ptr as usize + at_offset as usize] = byte;
             // Write all current states into set
             for state in current_states {
                 current_set_len = set_insert
-                    .call(&mut store, (current_set_len, *state, current_set_ptr))
+                    .call(
+                        regex.store_mut(),
+                        (current_set_len, *state, current_set_ptr),
+                    )
                     .unwrap();
             }
 
             let (new_next_set_len, is_match) = make_current_transitions
                 .call(
-                    &mut store,
+                    regex.store_mut(),
                     (
                         haystack_ptr,
                         haystack_len,
@@ -1213,7 +1232,7 @@ mod tests {
                     byte as char
                 );
                 let states = &unsafe {
-                    state_memory.data(&store)[next_set_layout.set_start_pos
+                    state_memory.data(regex.store())[next_set_layout.set_start_pos
                         ..(next_set_layout.set_start_pos + next_set_layout.set_overall.size())]
                         .align_to::<u8>()
                         .1

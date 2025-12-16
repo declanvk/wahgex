@@ -5,22 +5,44 @@ set -o nounset # make script exit when using undeclared variables
 set -o pipefail # make script exit when command fails in a pipe
 set -o xtrace # print a trace of all commands executed by script
 
-if [ "$#" -ne 1 ]; then
-    >&2 echo "Illegal number of parameters [$#]"
-    >&2 echo "usage: ci.sh <toolchain>"
-    exit 1
-fi
-
-TOOLCHAIN="${1}"
+DEFAULT_TOOLCHAIN=$(rustup show active-toolchain | cut -f1 -d' ')
+TOOLCHAIN="${1:-${DEFAULT_TOOLCHAIN}}"
 TOOLCHAIN_ARG="+${TOOLCHAIN}"
 
-cargo "${TOOLCHAIN_ARG}" build  --all-targets
+# Build
+# `cargo hack build --feature-powerset --print-command-list`
+cargo "${TOOLCHAIN_ARG}" build --manifest-path core/Cargo.toml --no-default-features
+cargo "${TOOLCHAIN_ARG}" build --manifest-path core/Cargo.toml --no-default-features --features default,wasmi
+cargo "${TOOLCHAIN_ARG}" build --manifest-path core/Cargo.toml --no-default-features --features compile
+cargo "${TOOLCHAIN_ARG}" build --manifest-path core/Cargo.toml --no-default-features --features default
+cargo "${TOOLCHAIN_ARG}" build --manifest-path core/Cargo.toml --no-default-features --features wasmi
+cargo "${TOOLCHAIN_ARG}" build --manifest-path core/Cargo.toml --no-default-features --features compile,wasmi
+cargo "${TOOLCHAIN_ARG}" build --manifest-path cli/Cargo.toml
+cargo "${TOOLCHAIN_ARG}" build --manifest-path web/playground/Cargo.toml
 
 # --all-targets does not include the doctests
-cargo "${TOOLCHAIN_ARG}" test   --all-targets
+# `cargo hack test --feature-powerset --print-command-list`
+cargo "${TOOLCHAIN_ARG}" test --manifest-path core/Cargo.toml --no-default-features
+cargo "${TOOLCHAIN_ARG}" test --manifest-path core/Cargo.toml --no-default-features --features default,wasmi
+cargo "${TOOLCHAIN_ARG}" test --manifest-path core/Cargo.toml --no-default-features --features compile
+cargo "${TOOLCHAIN_ARG}" test --manifest-path core/Cargo.toml --no-default-features --features default
+cargo "${TOOLCHAIN_ARG}" test --manifest-path core/Cargo.toml --no-default-features --features wasmi
+cargo "${TOOLCHAIN_ARG}" test --manifest-path core/Cargo.toml --no-default-features --features compile,wasmi
+cargo "${TOOLCHAIN_ARG}" test --manifest-path cli/Cargo.toml
+cargo "${TOOLCHAIN_ARG}" test --manifest-path web/playground/Cargo.toml
+
 cargo "${TOOLCHAIN_ARG}" test   --doc
 
-cargo "${TOOLCHAIN_ARG}" clippy --all-targets
+# `cargo hack clippy --feature-powerset --print-command-list`
+cargo "${TOOLCHAIN_ARG}" clippy --manifest-path core/Cargo.toml --no-default-features
+cargo "${TOOLCHAIN_ARG}" clippy --manifest-path core/Cargo.toml --no-default-features --features default,wasmi
+cargo "${TOOLCHAIN_ARG}" clippy --manifest-path core/Cargo.toml --no-default-features --features compile
+cargo "${TOOLCHAIN_ARG}" clippy --manifest-path core/Cargo.toml --no-default-features --features default
+cargo "${TOOLCHAIN_ARG}" clippy --manifest-path core/Cargo.toml --no-default-features --features wasmi
+cargo "${TOOLCHAIN_ARG}" clippy --manifest-path core/Cargo.toml --no-default-features --features compile,wasmi
+cargo "${TOOLCHAIN_ARG}" clippy --manifest-path cli/Cargo.toml
+cargo "${TOOLCHAIN_ARG}" clippy --manifest-path web/playground/Cargo.toml
+
 cargo "${TOOLCHAIN_ARG}" doc    --no-deps --document-private-items
 
 if [ "${TOOLCHAIN}" = "nightly" ]; then

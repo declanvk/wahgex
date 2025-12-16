@@ -1,4 +1,4 @@
-use wahgex_core::Builder;
+use wahgex::Builder;
 use wasm_bindgen::prelude::*;
 use wasmprinter::print_bytes;
 
@@ -19,14 +19,14 @@ pub struct CompileResult {
 
 #[wasm_bindgen]
 pub fn compile(regex: String) -> Result<CompileResult, String> {
-    let regex_vm = Builder::new()
+    let (bytecode, context) = Builder::new()
         .build(&regex)
         .map_err(|err| err.to_string())?;
 
-    let wasm_bytes = regex_vm.get_wasm();
+    let wasm_bytes = bytecode.as_ref();
     let wat_string = print_bytes(wasm_bytes).map_err(|err| err.to_string())?;
 
-    let nfa = regex_vm.get_nfa();
+    let nfa = context.nfa;
 
     let result = CompileResult {
         wasm_bytes: wasm_bytes.into(),

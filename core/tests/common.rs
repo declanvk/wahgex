@@ -1,8 +1,8 @@
 use regex_test::{
-    anyhow::{self},
     RegexTest,
+    anyhow::{self},
 };
-use wahgex_core::{Builder, PikeVM};
+use wahgex::{Builder, RegexContext};
 
 pub fn suite() -> anyhow::Result<regex_test::RegexTests> {
     let mut tests = regex_test::RegexTests::new();
@@ -48,7 +48,7 @@ pub fn suite() -> anyhow::Result<regex_test::RegexTests> {
 /// If the regex test has a setting that is unsupported, then this returns
 /// false (implying the test should be skipped).
 pub fn configure_pikevm_builder(test: &RegexTest, builder: &mut Builder) -> bool {
-    let pikevm_config = PikeVM::config();
+    let pikevm_config = RegexContext::config();
     builder
         .configure(pikevm_config)
         .syntax(config_syntax(test))
