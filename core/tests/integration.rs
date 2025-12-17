@@ -74,9 +74,7 @@ fn run_test(bytecode: &RegexBytecode, test: &RegexTest) -> TestResult {
 
 fn run_is_match(bytecode: &RegexBytecode, input: Input<'_>) -> anyhow::Result<TestResult> {
     let mut regex = Regex::new(bytecode).context("compile module")?;
-    let is_match_result = regex
-        .try_is_match(input)
-        .map_err(|err| anyhow::anyhow!(err))?;
+    let is_match_result = regex.is_match(input);
 
     Ok(TestResult::matched(is_match_result))
 }

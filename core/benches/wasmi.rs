@@ -40,7 +40,7 @@ fn compile_passthrough_haystack(
 #[bench::unicode_boundary(r"\bSherlock\b", "sherlock")]
 #[bench::ascii_boundary(r"(?-u)\bSherlock\b", "sherlock")]
 fn bench_is_match((mut regex, haystack): (Regex, Input<'static>)) -> bool {
-    regex.try_is_match(haystack).unwrap()
+    regex.is_match(haystack)
 }
 
 library_benchmark_group!(

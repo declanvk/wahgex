@@ -28,12 +28,11 @@ expression: pretty
   (type $make_current_transitions_fn (;22;) (func (param i64 i64 i64 i64 i32 i64 i32) (result i32 i32)))
   (type $lookup_start_id_fn (;23;) (func (param i32) (result i32 i32)))
   (type $prepare_input_fn (;24;) (func (param i64) (result i32)))
-  (type $assert_input_args_wf_fn (;25;) (func (param i32 i32 i32 i64 i64 i64)))
-  (type $pattern_lookup_start_result_block_sig (;26;) (func (param i32)))
-  (type $start_config_fn (;27;) (func (param i32 i32) (result i32 i32 i32)))
-  (type $start_config_is_some_block_sig (;28;) (func (param i32 i32) (result i32 i32)))
-  (type $make_current_transitions_is_match_block_sig (;29;) (func (param i32)))
-  (type $is_match_fn (;30;) (func (param i32 i32 i64 i64 i64) (result i32)))
+  (type $pattern_lookup_start_result_block_sig (;25;) (func (param i32)))
+  (type $start_config_fn (;26;) (func (param i32 i32) (result i32 i32 i32)))
+  (type $start_config_is_some_block_sig (;27;) (func (param i32 i32) (result i32 i32)))
+  (type $make_current_transitions_is_match_block_sig (;28;) (func (param i32)))
+  (type $is_match_fn (;29;) (func (param i32 i32 i64 i64 i64) (result i32)))
   (memory $haystack (;0;) i64 1)
   (memory $state (;1;) i64 1 1)
   (export "prepare_input" (func $prepare_input))
@@ -965,7 +964,7 @@ expression: pretty
       i64.const -1
       i64.eq
       if ;; label = @2
-        i32.const 2
+        unreachable
         return
       end
       i32.const 1
@@ -973,65 +972,7 @@ expression: pretty
       i32.const 0
     end
   )
-  (func $assert_input_args_wf (;24;) (type $assert_input_args_wf_fn) (param $earliest i32) (param $anchored i32) (param $anchored_pattern i32) (param $span_start i64) (param $span_end i64) (param $haystack_len i64)
-    local.get $earliest
-    i32.const 1
-    i32.ne
-    local.get $earliest
-    i32.const 0
-    i32.ne
-    i32.and
-    if $check_earliest_wf
-      unreachable
-    end
-    local.get $anchored
-    i32.const 0
-    i32.ne
-    local.get $anchored
-    i32.const 1
-    i32.ne
-    local.get $anchored
-    i32.const 2
-    i32.ne
-    i32.and
-    i32.and
-    if $check_anchored_wf
-      unreachable
-    end
-    local.get $anchored
-    i32.const 2
-    i32.ne
-    local.get $anchored_pattern
-    i32.const 0
-    i32.ne
-    i32.and
-    if $check_anchored_pattern_wf
-      unreachable
-    end
-    local.get $span_start
-    local.get $span_end
-    i64.gt_u
-    if $check_span_start_wf
-      unreachable
-    end
-    local.get $span_end
-    local.get $haystack_len
-    i64.gt_u
-    if $check_span_end_wf
-      unreachable
-    end
-    i64.const 0
-    local.get $haystack_len
-    i64.add
-    memory.size
-    i64.const 65536
-    i64.mul
-    i64.gt_u
-    if ;; label = @1
-      unreachable
-    end
-  )
-  (func $start_config (;25;) (type $start_config_fn) (param $anchored i32) (param $anchored_pattern i32) (result i32 i32 i32)
+  (func $start_config (;24;) (type $start_config_fn) (param $anchored i32) (param $anchored_pattern i32) (result i32 i32 i32)
     (local $pattern_start i32)
     local.get $anchored
     i32.const 0
@@ -1069,15 +1010,8 @@ expression: pretty
     i32.const 0
     i32.const 0
   )
-  (func $is_match (;26;) (type $is_match_fn) (param $anchored i32) (param $anchored_pattern i32) (param $span_start i64) (param $span_end i64) (param $haystack_len i64) (result i32)
+  (func $is_match (;25;) (type $is_match_fn) (param $anchored i32) (param $anchored_pattern i32) (param $span_start i64) (param $span_end i64) (param $haystack_len i64) (result i32)
     (local $at_offset i64) (local $curr_set_ptr i64) (local $next_set_ptr i64) (local $curr_set_len i32) (local $next_set_len i32) (local $start_state_id i32) (local $is_anchored i32)
-    i32.const 1
-    local.get $anchored
-    local.get $anchored_pattern
-    local.get $span_start
-    local.get $span_end
-    local.get $haystack_len
-    call $assert_input_args_wf
     local.get $anchored
     local.get $anchored_pattern
     call $start_config

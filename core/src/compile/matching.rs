@@ -82,7 +82,6 @@ impl MatchingFunctions {
 
         // Sketch:
         // ```
-        // assert_input_args_wf(true, anchored, anchored_pattern, span_start, span_end, haystack_len)
         // (start_state_id, is_anchored, is_some) = start_config(anchored, anchored_pattern)
         // if !is_some {
         //     return false;
@@ -119,15 +118,6 @@ impl MatchingFunctions {
 
         let mut body = wasm_encoder::Function::new([(3, ValType::I64), (4, ValType::I32)]);
         body.instructions()
-            // assert_input_args_wf(true, anchored, anchored_pattern, span_start, span_end,
-            // haystack_len)
-            .bool_const(true) // earliest
-            .local_get(0) // anchored
-            .local_get(1) // anchored_pattern
-            .local_get(2) // span_start
-            .local_get(3) // span_end
-            .local_get(4) // haystack_len
-            .call(input_funcs.assert_input_args_wf.into())
             // (start_state_id, is_anchored, is_some) = start_config(anchored, anchored_pattern)
             .local_get(0) // anchored
             .local_get(1) // anchored_pattern
