@@ -75,18 +75,13 @@ impl CompileContext {
 
     /// Declare and define a function.
     pub fn add_function(&mut self, func: Function) -> FunctionIdx {
-        let func_idx = self.declare_function(func.sig);
+        let func_idx = self.declare_function_and_fn_type(func.sig);
         self.define_function(func_idx, func.def);
         func_idx
     }
 
-    /// Declares a function's signature (name, parameters, return types, export
-    /// status).
-    ///
-    /// This adds entries to the Type, Function, and potentially
-    /// Export sections. A `FunctionIdx` is returned, which should be used
-    /// later to provide the definition.
-    pub fn declare_function(&mut self, sig: FunctionSignature) -> FunctionIdx {
+    /// Declare a function type.
+    pub fn declare_fn_type(&mut self, sig: &FunctionTypeSignature) -> TypeIdx {
         let func_ty_idx = self.sections.types.len();
         self.sections.types.ty().function(
             sig.params_ty.iter().copied(),
@@ -95,22 +90,47 @@ impl CompileContext {
         self.sections
             .type_names
             .append(func_ty_idx, &sig.type_name());
+        TypeIdx(func_ty_idx)
+    }
 
+    /// Declares a function's signature (name, parameters, return types, export
+    /// status).
+    pub fn declare_function_with_type(
+        &mut self,
+        func_ty_idx: TypeIdx,
+        name: &str,
+        export: bool,
+    ) -> FunctionIdx {
         let func_idx_val = self.sections.functions.len();
-        self.sections.functions.function(func_ty_idx);
-        self.sections.function_names.append(func_idx_val, &sig.name);
+        self.sections.functions.function(func_ty_idx.into());
+        self.sections.function_names.append(func_idx_val, name);
 
         #[cfg(test)]
         let override_export = self.config.get_export_all_functions();
         #[cfg(not(test))]
         let override_export = false;
 
-        if sig.export || override_export {
+        if export || override_export {
             self.sections
                 .exports
-                .export(&sig.name, ExportKind::Func, func_idx_val);
+                .export(name, ExportKind::Func, func_idx_val);
         }
         FunctionIdx(func_idx_val)
+    }
+
+    /// Declares a function's signature (name, parameters, return types, export
+    /// status).
+    ///
+    /// This adds entries to the Type, Function, and potentially
+    /// Export sections. A `FunctionIdx` is returned, which should be used
+    /// later to provide the definition.
+    pub fn declare_function_and_fn_type(&mut self, sig: FunctionSignature) -> FunctionIdx {
+        let func_ty_idx = self.declare_fn_type(&FunctionTypeSignature {
+            name: &sig.name,
+            params_ty: sig.params_ty,
+            results_ty: sig.results_ty,
+        });
+        self.declare_function_with_type(func_ty_idx, &sig.name, sig.export)
     }
 
     /// Defines a previously declared function.
@@ -324,7 +344,14 @@ pub struct FunctionSignature {
     pub export: bool,
 }
 
-impl FunctionSignature {
+#[derive(Debug)]
+pub struct FunctionTypeSignature<'n> {
+    pub name: &'n str,
+    pub params_ty: &'static [ValType],
+    pub results_ty: &'static [ValType],
+}
+
+impl<'n> FunctionTypeSignature<'n> {
     /// Generates a unique name for this function's type signature.
     fn type_name(&self) -> String {
         format!("{}_fn", self.name)
@@ -335,7 +362,7 @@ impl FunctionSignature {
 /// and branch hints.
 ///
 /// This is associated with a `FunctionIdx` obtained from
-/// [`CompileContext::declare_function`].
+/// [`CompileContext::declare_function_and_fn_type`].
 #[derive(Debug)]
 pub struct FunctionDefinition {
     pub body: wasm_encoder::Function,

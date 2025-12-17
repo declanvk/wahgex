@@ -10,6 +10,7 @@ use regex_automata::{
 use wasm_encoder::{BlockType, InstructionSink, MemArg, NameMap, ValType};
 
 use crate::compile::{
+    context::FunctionTypeSignature,
     instructions::InstructionSinkExt,
     lookaround::{
         byte_word::IsWordByteLookupTable,
@@ -17,7 +18,7 @@ use crate::compile::{
     },
 };
 
-use super::context::{CompileContext, FunctionDefinition, FunctionIdx, FunctionSignature};
+use super::context::{CompileContext, FunctionDefinition, FunctionIdx};
 
 mod byte_word;
 // code is generated, currently don't want to fix tool
@@ -102,10 +103,17 @@ impl LookFunctions {
             None
         };
 
-        for look in look_set.iter() {
-            let sig = lookaround_fn_signature(lookaround_fn_name(look));
+        let lookaround_fn_type = ctx.declare_fn_type(&FunctionTypeSignature {
+            name: "lookaround",
+            // [haystack_ptr, haystack_len, at_offset]
+            params_ty: &[ValType::I64, ValType::I64, ValType::I64],
+            // [is_match]
+            results_ty: &[ValType::I32],
+        });
 
-            let func = ctx.declare_function(sig);
+        for look in look_set.iter() {
+            let func =
+                ctx.declare_function_with_type(lookaround_fn_type, lookaround_fn_name(look), false);
             look_matches[look.as_repr().ilog2() as usize] = Some(func);
         }
 
@@ -1204,17 +1212,6 @@ impl LookFunctions {
                 memory_index: 1,
             })
             .end();
-    }
-}
-
-fn lookaround_fn_signature(name: &str) -> FunctionSignature {
-    FunctionSignature {
-        name: name.into(),
-        // [haystack_ptr, haystack_len, at_offset]
-        params_ty: &[ValType::I64, ValType::I64, ValType::I64],
-        // [is_match]
-        results_ty: &[ValType::I32],
-        export: false,
     }
 }
 

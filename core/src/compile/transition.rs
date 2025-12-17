@@ -13,6 +13,8 @@ use regex_automata::{
 };
 use wasm_encoder::{BlockType, InstructionSink, MemArg, NameMap, ValType};
 
+use crate::compile::context::FunctionTypeSignature;
+
 use super::{
     CompileContext,
     context::{
@@ -241,20 +243,54 @@ impl TransitionFunctions {
         // NOTE: The indexes of the `states` array correspond to the `StateID` value.
         let mut state_transitions = HashMap::new();
 
+        let transition_fn_type = ctx.declare_fn_type(&FunctionTypeSignature {
+            name: "transition",
+            // [haystack_ptr, haystack_len, at_offset, next_set_ptr, next_set_len]
+            params_ty: &[
+                ValType::I64,
+                ValType::I64,
+                ValType::I64,
+                ValType::I64,
+                ValType::I32,
+            ],
+            // [new_next_set_len, is_match]
+            results_ty: &[ValType::I32, ValType::I32],
+        });
+
         let states = ctx.nfa.states();
         for for_sid in (0..states.len()).map(StateID::new).map(Result::unwrap) {
             if !Self::needs_transition_fn(&ctx.nfa, for_sid) {
                 continue;
             }
 
-            let transition_fn = Self::transition_fn(
+            //             sig: FunctionSignature {
+            //     name: format!("transition_s{}", for_sid.as_usize()),
+            //     // [haystack_ptr, haystack_len, at_offset, next_set_ptr, next_set_len]
+            //     params_ty: &[
+            //         ValType::I64,
+            //         ValType::I64,
+            //         ValType::I64,
+            //         ValType::I64,
+            //         ValType::I32,
+            //     ],
+            //     // [new_next_set_len, is_match]
+            //     results_ty: &[ValType::I32, ValType::I32],
+            //     export: false,
+            // },
+
+            let transition_fn_def = Self::transition_fn(
                 for_sid,
                 ctx.nfa.states(),
                 epsilon_closures.branch_to_epsilon_closure,
                 transition_layout.get(for_sid),
                 ctx.state_id_layout(),
             );
-            let transition_idx = ctx.add_function(transition_fn);
+            let transition_idx = ctx.declare_function_with_type(
+                transition_fn_type,
+                &format!("transition_s{}", for_sid.as_usize()),
+                false,
+            );
+            ctx.define_function(transition_idx, transition_fn_def);
             state_transitions.insert(for_sid, transition_idx);
         }
 
@@ -497,7 +533,7 @@ impl TransitionFunctions {
         branch_to_epsilon_closure: FunctionIdx,
         lookup_table: Option<LookupTable>,
         state_id_layout: &Layout,
-    ) -> Function {
+    ) -> FunctionDefinition {
         let mut locals_name_map = NameMap::new();
         // Parameters
         locals_name_map.append(0, "haystack_ptr");
@@ -601,27 +637,11 @@ impl TransitionFunctions {
         }
         instructions.end();
 
-        Function {
-            sig: FunctionSignature {
-                name: format!("transition_s{}", for_sid.as_usize()),
-                // [haystack_ptr, haystack_len, at_offset, next_set_ptr, next_set_len]
-                params_ty: &[
-                    ValType::I64,
-                    ValType::I64,
-                    ValType::I64,
-                    ValType::I64,
-                    ValType::I32,
-                ],
-                // [new_next_set_len, is_match]
-                results_ty: &[ValType::I32, ValType::I32],
-                export: false,
-            },
-            def: FunctionDefinition {
-                body,
-                locals_name_map,
-                labels_name_map: Some(labels_name_map),
-                branch_hints: None,
-            },
+        FunctionDefinition {
+            body,
+            locals_name_map,
+            labels_name_map: Some(labels_name_map),
+            branch_hints: None,
         }
     }
 

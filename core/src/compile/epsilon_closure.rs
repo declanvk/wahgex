@@ -9,7 +9,7 @@ use regex_automata::{
 };
 use wasm_encoder::{BlockType, NameMap, ValType};
 
-use crate::compile::instructions::InstructionSinkExt;
+use crate::compile::{context::FunctionTypeSignature, instructions::InstructionSinkExt};
 
 use super::{
     BuildError, CompileContext,
@@ -53,6 +53,19 @@ impl EpsilonClosureFunctions {
         let mut state_to_epsilon_closure_fn = HashMap::new();
 
         let num_states = ctx.nfa.states().len();
+        let epsilon_closure_fn_type = ctx.declare_fn_type(&FunctionTypeSignature {
+            name: "epsilon_closure",
+            // [haystack_ptr, haystack_len, at_offset, next_set_ptr, next_set_len]
+            params_ty: &[
+                ValType::I64,
+                ValType::I64,
+                ValType::I64,
+                ValType::I64,
+                ValType::I32,
+            ],
+            // [new_next_set_len]
+            results_ty: &[ValType::I32],
+        });
         for for_sid in (0..num_states).map(StateID::new).map(Result::unwrap) {
             let states = ctx.nfa.states();
             let closure = compute_epsilon_closure(for_sid, states)?;
@@ -60,8 +73,11 @@ impl EpsilonClosureFunctions {
                 continue;
             }
 
-            let sig = Self::epsilon_closure_fn_sig(for_sid);
-            let func_idx = ctx.declare_function(sig);
+            let func_idx = ctx.declare_function_with_type(
+                epsilon_closure_fn_type,
+                &format!("epsilon_closure_s{}", for_sid.as_usize()),
+                false,
+            );
 
             state_to_epsilon_closure_fn.insert(for_sid, func_idx);
         }
@@ -174,23 +190,6 @@ impl EpsilonClosureFunctions {
             && closure.unconditional.contains(&for_sid)
             // Return false if there are conditional lookaround transitions from for_sid
             && closure.lookaround.is_empty()
-    }
-
-    fn epsilon_closure_fn_sig(for_sid: StateID) -> FunctionSignature {
-        FunctionSignature {
-            name: format!("epsilon_closure_s{}", for_sid.as_usize()),
-            // [haystack_ptr, haystack_len, at_offset, next_set_ptr, next_set_len]
-            params_ty: &[
-                ValType::I64,
-                ValType::I64,
-                ValType::I64,
-                ValType::I64,
-                ValType::I32,
-            ],
-            // [new_next_set_len]
-            results_ty: &[ValType::I32],
-            export: false,
-        }
     }
 
     fn epsilon_closure_fn_def(
