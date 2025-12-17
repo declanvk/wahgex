@@ -18,6 +18,7 @@ wasmi = { workspace = true, optional = true }
 wasmparser = { workspace = true }
 
 [dev-dependencies]
+gungraun = "0.17.0"
 insta = "1.42.2"
 rayon = "1.10.0"
 regex-test = { workspace = true }
@@ -41,3 +42,13 @@ required-features = ["wasmi", "compile"]
 path = "tests/wasm_module_size.rs"
 name = "wasm_module_size"
 required-features = ["compile"]
+
+[[bench]]
+name = "compile"
+harness = false
+required-features = ["compile"]
+
+[[bench]]
+name = "wasmi"
+harness = false
+required-features = ["wasmi", "compile"]

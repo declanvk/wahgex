@@ -28,5 +28,8 @@ jobs:
           toolchain: ${{matrix.rust}}
           components: rustfmt clippy
 
+      - name: Install deps
+        run: ./scripts/install-test-deps.sh
+
       - name: Run full test script
         run: ./scripts/ci.sh "${{matrix.rust}}"

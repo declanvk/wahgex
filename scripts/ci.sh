@@ -31,7 +31,8 @@ cargo "${TOOLCHAIN_ARG}" test --manifest-path core/Cargo.toml --no-default-featu
 cargo "${TOOLCHAIN_ARG}" test --manifest-path cli/Cargo.toml
 cargo "${TOOLCHAIN_ARG}" test --manifest-path web/playground/Cargo.toml
 
-cargo "${TOOLCHAIN_ARG}" test   --doc
+cargo "${TOOLCHAIN_ARG}" test --doc
+cargo "${TOOLCHAIN_ARG}" test --benches --release
 
 # `cargo hack clippy --feature-powerset --print-command-list`
 cargo "${TOOLCHAIN_ARG}" clippy --manifest-path core/Cargo.toml --no-default-features

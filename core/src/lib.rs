@@ -11,7 +11,7 @@ use compile::compile_from_nfa;
 
 pub use crate::error::BuildError;
 pub use ::regex_automata::{
-    nfa::thompson::Config as RegexNFAConfig, util::syntax::Config as RegexSyntaxConfig,
+    Input, nfa::thompson::Config as RegexNFAConfig, util::syntax::Config as RegexSyntaxConfig,
 };
 
 #[cfg(feature = "compile")]
