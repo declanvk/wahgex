@@ -47,17 +47,12 @@ impl InputOpts {
 
 /// This enum represents the results of the `prepare_input` function.
 #[derive(Debug)]
-#[cfg(any(feature = "wasmi", feature = "compile"))]
+#[cfg(feature = "compile")]
 pub enum PrepareInputResult {
     /// Indicates that the input preparation was successful and no memory
     /// growth was needed.
-    #[cfg_attr(not(feature = "compile"), expect(dead_code))]
     SuccessNoGrowth = 0,
     /// Indicates that the input preparation was successful and memory was
     /// grown to accommodate the haystack.
-    #[cfg_attr(not(feature = "compile"), expect(dead_code))]
     SuccessGrowth = 1,
-    /// Indicates that input preparation failed, likely due to an inability
-    /// to grow memory.
-    Failure = 2,
 }

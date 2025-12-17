@@ -50,7 +50,6 @@ impl InputLayout {
 pub struct InputFunctions {
     #[expect(dead_code)]
     prepare_input: FunctionIdx,
-    pub assert_input_args_wf: FunctionIdx,
     pub utf8_is_boundary: Option<FunctionIdx>,
     pub start_config: FunctionIdx,
 }
@@ -68,10 +67,6 @@ impl InputFunctions {
         pattern_lookup_start: FunctionIdx,
     ) -> Self {
         let prepare_input = ctx.add_function(Self::prepare_input_fn(
-            ctx.config.get_page_size(),
-            input_layout,
-        ));
-        let assert_input_args_wf = ctx.add_function(Self::assert_input_args_wf_fn(
             ctx.config.get_page_size(),
             input_layout,
         ));
@@ -93,7 +88,6 @@ impl InputFunctions {
 
         Self {
             prepare_input,
-            assert_input_args_wf,
             utf8_is_boundary,
             start_config,
         }
@@ -269,115 +263,6 @@ impl InputFunctions {
         }
     }
 
-    fn assert_input_args_wf_fn(page_size: usize, input_layout: &InputLayout) -> Function {
-        let mut locals_name_map = NameMap::new();
-        // Parameters
-        locals_name_map.append(0, "earliest");
-        locals_name_map.append(1, "anchored");
-        locals_name_map.append(2, "anchored_pattern");
-        locals_name_map.append(3, "span_start");
-        locals_name_map.append(4, "span_end");
-        locals_name_map.append(5, "haystack_len");
-
-        let mut labels_name_map = NameMap::new();
-        labels_name_map.append(0, "check_earliest_wf");
-        labels_name_map.append(1, "check_anchored_wf");
-        labels_name_map.append(2, "check_anchored_pattern_wf");
-        labels_name_map.append(3, "check_span_start_wf");
-        labels_name_map.append(4, "check_span_end_wf");
-
-        let mut body = wasm_encoder::Function::new([]);
-        body.instructions()
-            // if earliest != true && earliest != false {
-            .local_get(0)
-            .bool_const(true)
-            .i32_ne()
-            .local_get(0)
-            .bool_const(false)
-            .i32_ne()
-            .i32_and()
-            .if_(BlockType::Empty)
-            .unreachable()
-            .end()
-            // if anchored != 0 && anchored != 1 && anchored != 2 {
-            .local_get(1)
-            .i32_const(0)
-            .i32_ne()
-            .local_get(1)
-            .i32_const(1)
-            .i32_ne()
-            .local_get(1)
-            .i32_const(2)
-            .i32_ne()
-            .i32_and()
-            .i32_and()
-            .if_(BlockType::Empty)
-            .unreachable()
-            .end()
-            // if anchored != 2 && anchored_pattern != 0 {
-            .local_get(1)
-            .i32_const(2)
-            .i32_ne()
-            .local_get(2)
-            .i32_const(0)
-            .i32_ne()
-            .i32_and()
-            .if_(BlockType::Empty)
-            .unreachable()
-            .end()
-            // if span_start > span_end {
-            .local_get(3)
-            .local_get(4)
-            .i64_gt_u()
-            .if_(BlockType::Empty)
-            .unreachable()
-            .end()
-            // if span_end >= haystack_len {
-            .local_get(4)
-            .local_get(5)
-            .i64_gt_u()
-            .if_(BlockType::Empty)
-            .unreachable()
-            .end()
-            // if haystack_start_pos + haystack_len > memory.size * page_size
-            .u64_const(
-                u64::try_from(input_layout.haystack_start_pos)
-                    .expect("haystack pos should fit in u64"),
-            )
-            .local_get(5)
-            .i64_add()
-            .memory_size(0)
-            .u64_const(u64::try_from(page_size).expect("page size should fit in u64"))
-            .i64_mul()
-            .i64_gt_u()
-            .if_(BlockType::Empty)
-            .unreachable()
-            .end()
-            .end();
-
-        Function {
-            sig: FunctionSignature {
-                name: "assert_input_args_wf".into(),
-                params_ty: &[
-                    ValType::I32,
-                    ValType::I32,
-                    ValType::I32,
-                    ValType::I64,
-                    ValType::I64,
-                    ValType::I64,
-                ],
-                results_ty: &[],
-                export: false,
-            },
-            def: FunctionDefinition {
-                body,
-                locals_name_map,
-                labels_name_map: Some(labels_name_map),
-                branch_hints: None,
-            },
-        }
-    }
-
     fn prepare_input_fn(page_size: usize, input_layout: &InputLayout) -> Function {
         let mut locals_name_map = NameMap::new();
         // Parameters
@@ -423,7 +308,7 @@ impl InputFunctions {
             .i64_eq()
             .if_(BlockType::Empty)
             // If the memory.grow returns -1, then trap since I don't want to handle this
-            .i32_const(PrepareInputResult::Failure as i32)
+            .unreachable()
             .return_()
             .end()
             .i32_const(PrepareInputResult::SuccessGrowth as i32)

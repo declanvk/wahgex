@@ -3,10 +3,7 @@
 
 use wasmi::{Engine, Instance, Linker, Memory, Module, Store, TypedFunc};
 
-use crate::{
-    RegexBytecode,
-    input::{InputOpts, PrepareInputResult},
-};
+use crate::{RegexBytecode, common_input_validation, input::InputOpts};
 
 #[derive(Debug)]
 pub(crate) struct Executor {
@@ -110,15 +107,14 @@ impl Regex {
     }
 
     /// TODO: Write docs for this item
-    pub fn try_is_match(&mut self, input: regex_automata::Input<'_>) -> Result<bool, String> {
+    pub fn is_match(&mut self, input: regex_automata::Input<'_>) -> bool {
+        common_input_validation(&input);
+
         let haystack = input.haystack();
-        let success = self
+        let _success = self
             .prepare_input
             .call(&mut self.executor.store, haystack.len().try_into().unwrap())
             .expect("execution should not trap");
-        if success == (PrepareInputResult::Failure as i32) {
-            return Err("prepare_input failed".into());
-        }
 
         self.haystack.data_mut(&mut self.executor.store)[0..haystack.len()]
             .copy_from_slice(haystack);
@@ -141,14 +137,12 @@ impl Regex {
             )
             .expect("execution should not trap");
 
-        let is_match_result = if is_match_result == (true as i32) {
+        if is_match_result == (true as i32) {
             true
         } else if is_match_result == (false as i32) {
             false
         } else {
             panic!("unexpected value from is_match: {is_match_result}");
-        };
-
-        Ok(is_match_result)
+        }
     }
 }

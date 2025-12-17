@@ -251,3 +251,30 @@ impl AsRef<[u8]> for RegexBytecode {
         &self.bytes
     }
 }
+
+/// Assert that a given [`Input`] follows some common requirements.
+///
+/// Namely that:
+///  1. The length of the haystack is less than [`usize::MAX`] (I think this
+///     condition is impossible to violate since maximum slice length is
+///     [`isize::MAX`]).
+///  2. The [`input.start()`][Input::end] must be less than or equal to
+///     [`input.end`][Input::end].
+///  3. The [`input.end()`][Input::end] must be less than or equal to the length
+///     of the haystack.
+#[cfg(feature = "wasmi")]
+fn common_input_validation(input: &Input<'_>) {
+    assert!(
+        input.haystack().len() < usize::MAX,
+        "byte slice lengths must be less than usize MAX",
+    );
+    let span = input.get_span();
+    assert!(
+        span.start <= span.end,
+        "span start must be less than or equal to span end",
+    );
+    assert!(
+        span.end <= input.haystack().len(),
+        "span end must be within bounds of haystack"
+    )
+}
