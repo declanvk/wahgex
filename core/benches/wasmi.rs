@@ -37,6 +37,8 @@ fn compile_passthrough_haystack(
 
 #[library_benchmark(setup = compile_passthrough_haystack)]
 #[bench::literal(r"Sherlock Holmes", "sherlock")]
+#[bench::literal_prefix(r"Sherlock\s+\w+", "sherlock")]
+#[bench::literal_suffix(r"\w+\s+Holmes", "sherlock")]
 #[bench::unicode_boundary(r"\bSherlock\b", "sherlock")]
 #[bench::ascii_boundary(r"(?-u)\bSherlock\b", "sherlock")]
 fn bench_is_match((mut regex, haystack): (Regex, Input<'static>)) -> bool {
