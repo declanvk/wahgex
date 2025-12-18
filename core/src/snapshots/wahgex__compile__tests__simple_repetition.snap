@@ -375,65 +375,56 @@ expression: pretty
     i32.const 1
   )
   (func $branch_to_transition (;12;) (type $branch_to_transition_fn) (param $haystack_ptr i64) (param $haystack_len i64) (param $at_offset i64) (param $next_set_ptr i64) (param $next_set_len i32) (param $state_id i32) (result i32 i32)
-    local.get $state_id
-    i32.const 1
-    i32.eq
-    if ;; label = @1
-      local.get $haystack_ptr
-      local.get $haystack_len
-      local.get $at_offset
-      local.get $next_set_ptr
-      local.get $next_set_len
-      call $transition_s1
-      return
-    end
-    local.get $state_id
-    i32.const 3
-    i32.eq
-    if ;; label = @1
-      local.get $haystack_ptr
-      local.get $haystack_len
-      local.get $at_offset
-      local.get $next_set_ptr
-      local.get $next_set_len
-      call $transition_s3
-      return
-    end
-    local.get $state_id
-    i32.const 4
-    i32.eq
-    if ;; label = @1
-      local.get $haystack_ptr
-      local.get $haystack_len
-      local.get $at_offset
-      local.get $next_set_ptr
-      local.get $next_set_len
-      call $transition_s4
-      return
-    end
-    local.get $state_id
-    i32.const 5
-    i32.eq
-    if ;; label = @1
-      local.get $haystack_ptr
-      local.get $haystack_len
-      local.get $at_offset
-      local.get $next_set_ptr
-      local.get $next_set_len
-      call $transition_s5
-      return
-    end
-    local.get $state_id
-    i32.const 8
-    i32.eq
-    if ;; label = @1
-      local.get $haystack_ptr
-      local.get $haystack_len
-      local.get $at_offset
-      local.get $next_set_ptr
-      local.get $next_set_len
-      call $transition_s8
-      return
+    block $fallback_block
+      block ;; label = @2
+        block ;; label = @3
+          block ;; label = @4
+            block ;; label = @5
+              block ;; label = @6
+                block ;; label = @7
+                  local.get $state_id
+                  br_table $fallback_block 0 (;@7;) $fallback_block 1 (;@6;) 2 (;@5;) 3 (;@4;) $fallback_block $fallback_block 4 (;@3;) $fallback_block
+                end
+                local.get $haystack_ptr
+                local.get $haystack_len
+                local.get $at_offset
+                local.get $next_set_ptr
+                local.get $next_set_len
+                call $transition_s1
+                return
+              end
+              local.get $haystack_ptr
+              local.get $haystack_len
+              local.get $at_offset
+              local.get $next_set_ptr
+              local.get $next_set_len
+              call $transition_s3
+              return
+            end
+            local.get $haystack_ptr
+            local.get $haystack_len
+            local.get $at_offset
+            local.get $next_set_ptr
+            local.get $next_set_len
+            call $transition_s4
+            return
+          end
+          local.get $haystack_ptr
+          local.get $haystack_len
+          local.get $at_offset
+          local.get $next_set_ptr
+          local.get $next_set_len
+          call $transition_s5
+          return
+        end
+        local.get $haystack_ptr
+        local.get $haystack_len
+        local.get $at_offset
+        local.get $next_set_ptr
+        local.get $next_set_len
+        call $transition_s8
+        return
+      end
     end
     local.get $next_set_len
     i32.const 0

@@ -89,6 +89,14 @@ mod tests {
     }
 
     #[test]
+    fn empty_pattern_list() {
+        let nfa = regex_automata::nfa::thompson::NFA::new_many::<&str>(&[]).unwrap();
+        let bytecode = compile_from_nfa(nfa, crate::Config::new()).unwrap();
+        let pretty = wasm_print_module(&bytecode);
+        insta::assert_snapshot!(pretty);
+    }
+
+    #[test]
     fn simple_repetition() {
         let compiled = compile("(?:abc)+").unwrap();
         let pretty = wasm_print_module(&compiled);
