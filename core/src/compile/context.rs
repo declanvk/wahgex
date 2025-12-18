@@ -31,6 +31,8 @@ pub struct Sections {
     memories: MemorySection,
     exports: ExportSection,
     data: DataSection,
+
+    // Name map
     function_names: NameMap,
     memory_names: NameMap,
     type_names: NameMap,
@@ -304,6 +306,12 @@ impl CompileContext {
         {
             name_section.functions(&self.sections.function_names);
 
+            name_section.locals(&local_names);
+
+            name_section.labels(&label_names);
+
+            name_section.types(&self.sections.type_names);
+
             {
                 self.sections
                     .memory_names
@@ -311,12 +319,6 @@ impl CompileContext {
                 self.sections.memory_names.append(state_mem_idx, "state"); // Assuming state_mem_idx is valid
             }
             name_section.memories(&self.sections.memory_names);
-
-            name_section.locals(&local_names);
-
-            name_section.labels(&label_names);
-
-            name_section.types(&self.sections.type_names);
 
             name_section.data(&self.sections.data_names);
         }
@@ -411,6 +413,16 @@ pub struct TypeIdx(u32);
 
 impl From<TypeIdx> for u32 {
     fn from(idx: TypeIdx) -> Self {
+        idx.0
+    }
+}
+
+/// This index type represents a pointer to a specific table.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct TableIdx(u32);
+
+impl From<TableIdx> for u32 {
+    fn from(idx: TableIdx) -> Self {
         idx.0
     }
 }

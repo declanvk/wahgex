@@ -650,125 +650,101 @@ expression: pretty
     i32.const 1
   )
   (func $branch_to_transition (;19;) (type $branch_to_transition_fn) (param $haystack_ptr i64) (param $haystack_len i64) (param $at_offset i64) (param $next_set_ptr i64) (param $next_set_len i32) (param $state_id i32) (result i32 i32)
-    local.get $state_id
-    i32.const 2
-    i32.eq
-    if ;; label = @1
-      local.get $haystack_ptr
-      local.get $haystack_len
-      local.get $at_offset
-      local.get $next_set_ptr
-      local.get $next_set_len
-      call $transition_s2
-      return
-    end
-    local.get $state_id
-    i32.const 3
-    i32.eq
-    if ;; label = @1
-      local.get $haystack_ptr
-      local.get $haystack_len
-      local.get $at_offset
-      local.get $next_set_ptr
-      local.get $next_set_len
-      call $transition_s3
-      return
-    end
-    local.get $state_id
-    i32.const 4
-    i32.eq
-    if ;; label = @1
-      local.get $haystack_ptr
-      local.get $haystack_len
-      local.get $at_offset
-      local.get $next_set_ptr
-      local.get $next_set_len
-      call $transition_s4
-      return
-    end
-    local.get $state_id
-    i32.const 5
-    i32.eq
-    if ;; label = @1
-      local.get $haystack_ptr
-      local.get $haystack_len
-      local.get $at_offset
-      local.get $next_set_ptr
-      local.get $next_set_len
-      call $transition_s5
-      return
-    end
-    local.get $state_id
-    i32.const 6
-    i32.eq
-    if ;; label = @1
-      local.get $haystack_ptr
-      local.get $haystack_len
-      local.get $at_offset
-      local.get $next_set_ptr
-      local.get $next_set_len
-      call $transition_s6
-      return
-    end
-    local.get $state_id
-    i32.const 7
-    i32.eq
-    if ;; label = @1
-      local.get $haystack_ptr
-      local.get $haystack_len
-      local.get $at_offset
-      local.get $next_set_ptr
-      local.get $next_set_len
-      call $transition_s7
-      return
-    end
-    local.get $state_id
-    i32.const 8
-    i32.eq
-    if ;; label = @1
-      local.get $haystack_ptr
-      local.get $haystack_len
-      local.get $at_offset
-      local.get $next_set_ptr
-      local.get $next_set_len
-      call $transition_s8
-      return
-    end
-    local.get $state_id
-    i32.const 9
-    i32.eq
-    if ;; label = @1
-      local.get $haystack_ptr
-      local.get $haystack_len
-      local.get $at_offset
-      local.get $next_set_ptr
-      local.get $next_set_len
-      call $transition_s9
-      return
-    end
-    local.get $state_id
-    i32.const 10
-    i32.eq
-    if ;; label = @1
-      local.get $haystack_ptr
-      local.get $haystack_len
-      local.get $at_offset
-      local.get $next_set_ptr
-      local.get $next_set_len
-      call $transition_s10
-      return
-    end
-    local.get $state_id
-    i32.const 13
-    i32.eq
-    if ;; label = @1
-      local.get $haystack_ptr
-      local.get $haystack_len
-      local.get $at_offset
-      local.get $next_set_ptr
-      local.get $next_set_len
-      call $transition_s13
-      return
+    block $fallback_block
+      block ;; label = @2
+        block ;; label = @3
+          block ;; label = @4
+            block ;; label = @5
+              block ;; label = @6
+                block ;; label = @7
+                  block ;; label = @8
+                    block ;; label = @9
+                      block ;; label = @10
+                        block ;; label = @11
+                          block ;; label = @12
+                            local.get $state_id
+                            br_table $fallback_block $fallback_block 0 (;@12;) 1 (;@11;) 2 (;@10;) 3 (;@9;) 4 (;@8;) 5 (;@7;) 6 (;@6;) 7 (;@5;) 8 (;@4;) $fallback_block $fallback_block 9 (;@3;) $fallback_block
+                          end
+                          local.get $haystack_ptr
+                          local.get $haystack_len
+                          local.get $at_offset
+                          local.get $next_set_ptr
+                          local.get $next_set_len
+                          call $transition_s2
+                          return
+                        end
+                        local.get $haystack_ptr
+                        local.get $haystack_len
+                        local.get $at_offset
+                        local.get $next_set_ptr
+                        local.get $next_set_len
+                        call $transition_s3
+                        return
+                      end
+                      local.get $haystack_ptr
+                      local.get $haystack_len
+                      local.get $at_offset
+                      local.get $next_set_ptr
+                      local.get $next_set_len
+                      call $transition_s4
+                      return
+                    end
+                    local.get $haystack_ptr
+                    local.get $haystack_len
+                    local.get $at_offset
+                    local.get $next_set_ptr
+                    local.get $next_set_len
+                    call $transition_s5
+                    return
+                  end
+                  local.get $haystack_ptr
+                  local.get $haystack_len
+                  local.get $at_offset
+                  local.get $next_set_ptr
+                  local.get $next_set_len
+                  call $transition_s6
+                  return
+                end
+                local.get $haystack_ptr
+                local.get $haystack_len
+                local.get $at_offset
+                local.get $next_set_ptr
+                local.get $next_set_len
+                call $transition_s7
+                return
+              end
+              local.get $haystack_ptr
+              local.get $haystack_len
+              local.get $at_offset
+              local.get $next_set_ptr
+              local.get $next_set_len
+              call $transition_s8
+              return
+            end
+            local.get $haystack_ptr
+            local.get $haystack_len
+            local.get $at_offset
+            local.get $next_set_ptr
+            local.get $next_set_len
+            call $transition_s9
+            return
+          end
+          local.get $haystack_ptr
+          local.get $haystack_len
+          local.get $at_offset
+          local.get $next_set_ptr
+          local.get $next_set_len
+          call $transition_s10
+          return
+        end
+        local.get $haystack_ptr
+        local.get $haystack_len
+        local.get $at_offset
+        local.get $next_set_ptr
+        local.get $next_set_len
+        call $transition_s13
+        return
+      end
     end
     local.get $next_set_len
     i32.const 0

@@ -3,7 +3,7 @@
 
 use std::{
     alloc::{Layout, LayoutError},
-    collections::HashMap,
+    collections::{BTreeMap, HashMap},
     mem,
 };
 
@@ -226,7 +226,7 @@ fn flatten_dense_transition(dense: &[StateID], state_id_layout: &Layout) -> Vec<
 #[derive(Debug)]
 pub struct TransitionFunctions {
     #[expect(dead_code)]
-    state_transitions: HashMap<StateID, FunctionIdx>,
+    state_transitions: BTreeMap<StateID, FunctionIdx>,
     #[expect(dead_code)]
     branch_to_transition: FunctionIdx,
     pub make_current_transitions: FunctionIdx,
@@ -241,7 +241,7 @@ impl TransitionFunctions {
         transition_layout: &TransitionLayout,
     ) -> Self {
         // NOTE: The indexes of the `states` array correspond to the `StateID` value.
-        let mut state_transitions = HashMap::new();
+        let mut state_transitions = BTreeMap::new();
 
         let transition_fn_type = ctx.declare_fn_type(&FunctionTypeSignature {
             name: "transition",
@@ -257,26 +257,11 @@ impl TransitionFunctions {
             results_ty: &[ValType::I32, ValType::I32],
         });
 
-        let states = ctx.nfa.states();
-        for for_sid in (0..states.len()).map(StateID::new).map(Result::unwrap) {
+        let num_states = ctx.nfa.states().len();
+        for for_sid in (0..num_states).map(StateID::new).map(Result::unwrap) {
             if !Self::needs_transition_fn(&ctx.nfa, for_sid) {
                 continue;
             }
-
-            //             sig: FunctionSignature {
-            //     name: format!("transition_s{}", for_sid.as_usize()),
-            //     // [haystack_ptr, haystack_len, at_offset, next_set_ptr, next_set_len]
-            //     params_ty: &[
-            //         ValType::I64,
-            //         ValType::I64,
-            //         ValType::I64,
-            //         ValType::I64,
-            //         ValType::I32,
-            //     ],
-            //     // [new_next_set_len, is_match]
-            //     results_ty: &[ValType::I32, ValType::I32],
-            //     export: false,
-            // },
 
             let transition_fn_def = Self::transition_fn(
                 for_sid,
@@ -294,8 +279,14 @@ impl TransitionFunctions {
             state_transitions.insert(for_sid, transition_idx);
         }
 
-        let branch_to_transition =
-            ctx.add_function(Self::branch_to_transition_fn(&state_transitions));
+        let branch_to_transition = if !state_transitions.is_empty() {
+            ctx.add_function(Self::branch_to_transition_fn(
+                StateID::try_from(num_states - 1).expect("should be expressible as state ID"),
+                &state_transitions,
+            ))
+        } else {
+            ctx.add_function(Self::empty_branch_to_transition_fn())
+        };
 
         let branch_to_transition_is_match_block_sig = ctx.add_block_signature(BlockSignature {
             name: "branch_to_transition_is_match",
@@ -450,7 +441,7 @@ impl TransitionFunctions {
         }
     }
 
-    fn branch_to_transition_fn(state_transitions: &HashMap<StateID, FunctionIdx>) -> Function {
+    fn empty_branch_to_transition_fn() -> Function {
         let mut locals_name_map = NameMap::new();
         // Parameters
         locals_name_map.append(0, "haystack_ptr");
@@ -460,45 +451,13 @@ impl TransitionFunctions {
         locals_name_map.append(4, "next_set_len");
         locals_name_map.append(5, "state_id");
 
+        // Rust sketch:
+        // ```rust
+        // return [new_next_set_len, is_match]
+        // ```
+
         let mut body = wasm_encoder::Function::new([]);
-        let mut instructions = body.instructions();
-
-        let mut states = state_transitions.keys().copied().collect::<Vec<_>>();
-        states.sort();
-
-        // TODO(opt): Switch to using a `br_table` instead of a bunch of if-statements
-        // We would need to figure out the holes in the state IDs list and route those
-        // to the fallback block. See https://godbolt.org/z/ba89YPx3z for an example.
-        //
-        // Maybe we could also do a table and `call_indirect`? We'd have the same large
-        // mapping, but I think the number of instructions emitted would be a lot
-        // smaller. The downside might be perf hit on an indirect call, but I'm not sure
-        // its worse than the "many checks" situations. Similarly to the `br_table`,
-        // we'd need a dummy function for the holes in the state ID space.
-        //
-        // Playing around with the godbolt sample, if the spaces between occupied
-        // entries grows too large then the jump should be split into multiple levels
-        for sid in states {
-            let transition_fn = state_transitions.get(&sid).copied().unwrap();
-            instructions
-                .local_get(5) // state_id
-                .u32_const(sid.as_u32())
-                .i32_eq()
-                .if_(BlockType::Empty)
-                .local_get(0) // haystack_ptr
-                .local_get(1) // haystack_len
-                .local_get(2) // at_offset
-                .local_get(3) // next_set_ptr
-                .local_get(4) // next_set_len
-                .call(transition_fn.into())
-                .return_()
-                .end();
-        }
-
-        // If it falls through to this point, then we must assume thats its a state
-        // which has no transition. In which case, we need to return the current
-        // `next_set_len` and `false` for is_match.
-        instructions.local_get(4).bool_const(false).end();
+        body.instructions().local_get(4).bool_const(false).end();
 
         Function {
             sig: FunctionSignature {
@@ -522,6 +481,140 @@ impl TransitionFunctions {
                 body,
                 locals_name_map,
                 labels_name_map: None,
+                branch_hints: None,
+            },
+        }
+    }
+
+    fn branch_to_transition_fn(
+        high: StateID,
+        state_transitions: &BTreeMap<StateID, FunctionIdx>,
+    ) -> Function {
+        let mut locals_name_map = NameMap::new();
+        // Parameters
+        locals_name_map.append(0, "haystack_ptr");
+        locals_name_map.append(1, "haystack_len");
+        locals_name_map.append(2, "at_offset");
+        locals_name_map.append(3, "next_set_ptr");
+        locals_name_map.append(4, "next_set_len");
+        locals_name_map.append(5, "state_id");
+
+        let mut labels_name_map = NameMap::new();
+
+        // Rust sketch:
+        // ```rust
+        // switch state_id {
+        //     s0 => transition_s0(...),
+        //     s1 => transition_s1(...),
+        //     s2 => transition_s2(...),
+        //     ...
+        //     other => [new_next_set_len, is_match]
+        // }
+        // ```
+        //
+        // Switch statement expands to a bunch of blocks like:
+        // ```wasm
+        // (block
+        //     (block
+        //         (block ...)))
+        // ```
+
+        let mut body = wasm_encoder::Function::new([]);
+        let mut instructions = body.instructions();
+
+        debug_assert_eq!(
+            StateID::ZERO.as_u32(),
+            0,
+            "Need to have this representation so that we don't need to manipulate state ID value \
+             in WASM to adjust"
+        );
+        debug_assert!(
+            StateID::try_from(high.as_u32() + 1).is_ok(),
+            "Need to make sure the +1 is still in range"
+        );
+
+        let state_ids: Vec<_> = (StateID::ZERO.as_u32()..=high.as_u32())
+            .map(|s| {
+                StateID::try_from(s)
+                    .expect("all state IDs between two valid state IDs must be representable")
+            })
+            .collect();
+
+        instructions.block(BlockType::Empty); // start fallback block
+        labels_name_map.append(0, "fallback_block");
+
+        let mut state_id_to_block = HashMap::new();
+        for state_id in state_ids.iter() {
+            if state_transitions.contains_key(state_id) {
+                instructions.block(BlockType::Empty);
+                state_id_to_block.insert(
+                    *state_id,
+                    u32::try_from(state_id_to_block.len())
+                        .expect("counter in state ID space should fit in u32"),
+                );
+            }
+        }
+        let fallback_block_label =
+            u32::try_from(state_id_to_block.len() + 1).expect("number of states should fit in u32");
+        let labels: Vec<_> = state_ids
+            .iter()
+            .map(|s| {
+                if let Some(label) = state_id_to_block.get(s) {
+                    *label
+                } else {
+                    fallback_block_label
+                }
+            })
+            .collect();
+        instructions
+            .block(BlockType::Empty)
+            .local_get(5)
+            .br_table(labels, fallback_block_label)
+            .end();
+        for state_id in &state_ids {
+            let Some(transition_fn) = state_transitions.get(state_id).copied() else {
+                continue;
+            };
+            instructions
+                .local_get(0)
+                .local_get(1)
+                .local_get(2)
+                .local_get(3)
+                .local_get(4)
+                .call(transition_fn.into())
+                .return_()
+                .end();
+        }
+
+        instructions
+            .end() // end fallback block
+            //     return [new_next_set_len, is_match]
+            .local_get(4)
+            .bool_const(false)
+            .end();
+
+        Function {
+            sig: FunctionSignature {
+                name: "branch_to_transition".into(),
+                // [haystack_ptr, haystack_len, at_offset, next_set_ptr, next_set_len, state_id]
+                params_ty: &[
+                    // TODO(opt): Remove haystack_ptr and assume that haystack always starts at
+                    // offset 0 in memory 0
+                    ValType::I64,
+                    ValType::I64,
+                    ValType::I64,
+                    ValType::I64,
+                    ValType::I32,
+                    ValType::I32,
+                ],
+                // [new_next_set_len, is_match]
+                results_ty: &[ValType::I32, ValType::I32],
+                export: false,
+            },
+            def: FunctionDefinition {
+                body,
+                locals_name_map,
+                labels_name_map: Some(labels_name_map),
                 branch_hints: None,
             },
         }

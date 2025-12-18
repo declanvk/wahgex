@@ -146,3 +146,19 @@ impl Regex {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use regex_automata::Input;
+
+    use crate::Builder;
+
+    use super::*;
+
+    #[test]
+    fn empty_pattern_empty_haystack() {
+        let (bytecode, _) = Builder::new().build_many::<&str>(&[]).unwrap();
+        let mut regex = Regex::new(&bytecode).unwrap();
+        assert!(!regex.is_match(Input::new("")));
+    }
+}
