@@ -8,21 +8,24 @@ expression: pretty
   (type $epsilon_closure_fn (;2;) (func (param i64 i64 i64 i64 i32) (result i32)))
   (type $branch_to_epsilon_closure_fn (;3;) (func (param i64 i64 i64 i64 i32 i32) (result i32)))
   (type $transition_fn (;4;) (func (param i64 i64 i64 i64 i32) (result i32 i32)))
-  (type $branch_to_transition_fn (;5;) (func (param i64 i64 i64 i64 i32 i32) (result i32 i32)))
-  (type $branch_to_transition_is_match_block_sig (;6;) (func (param i32)))
-  (type $make_current_transitions_fn (;7;) (func (param i64 i64 i64 i64 i32 i64 i32) (result i32 i32)))
-  (type $lookup_start_id_fn (;8;) (func (param i32) (result i32 i32)))
-  (type $prepare_input_fn (;9;) (func (param i64) (result i32)))
-  (type $pattern_lookup_start_result_block_sig (;10;) (func (param i32)))
-  (type $start_config_fn (;11;) (func (param i32 i32) (result i32 i32 i32)))
-  (type $start_config_is_some_block_sig (;12;) (func (param i32 i32) (result i32 i32)))
-  (type $make_current_transitions_is_match_block_sig (;13;) (func (param i32)))
-  (type $is_match_fn (;14;) (func (param i32 i32 i64 i64 i64) (result i32)))
+  (type $transition_no_op_fn (;5;) (func (param i64 i64 i64 i64 i32) (result i32 i32)))
+  (type $branch_to_transition_fn (;6;) (func (param i64 i64 i64 i64 i32 i32) (result i32 i32)))
+  (type $branch_to_transition_is_match_block_sig (;7;) (func (param i32)))
+  (type $make_current_transitions_fn (;8;) (func (param i64 i64 i64 i64 i32 i64 i32) (result i32 i32)))
+  (type $lookup_start_id_fn (;9;) (func (param i32) (result i32 i32)))
+  (type $prepare_input_fn (;10;) (func (param i64) (result i32)))
+  (type $pattern_lookup_start_result_block_sig (;11;) (func (param i32)))
+  (type $start_config_fn (;12;) (func (param i32 i32) (result i32 i32 i32)))
+  (type $start_config_is_some_block_sig (;13;) (func (param i32 i32) (result i32 i32)))
+  (type $make_current_transitions_is_match_block_sig (;14;) (func (param i32)))
+  (type $is_match_fn (;15;) (func (param i32 i32 i64 i64 i64) (result i32)))
+  (table $branch_to_transition_table (;0;) 6 6 funcref)
   (memory $haystack (;0;) i64 1)
   (memory $state (;1;) i64 1 1)
   (export "prepare_input" (func $prepare_input))
   (export "is_match" (func $is_match))
   (export "haystack" (memory $haystack))
+  (elem $branch_to_transition_elements (;0;) (table $branch_to_transition_table) (i32.const 0) func $transition_no_op $transition_s1 $transition_no_op $transition_s3 $transition_no_op $transition_s5)
   (func $sparse_set_contains (;0;) (type $sparse_set_contains_fn) (param $set_ptr i64) (param $set_len i32) (param $state_id i32) (result i32)
     (local $index i32)
     local.get $state_id
@@ -158,7 +161,11 @@ expression: pretty
     local.get $next_set_ptr
     call $sparse_set_insert
   )
-  (func $transition_s1 (;6;) (type $transition_fn) (param $haystack_ptr i64) (param $haystack_len i64) (param $at_offset i64) (param $next_set_ptr i64) (param $next_set_len i32) (result i32 i32)
+  (func $transition_no_op (;6;) (type $transition_no_op_fn) (param $haystack_ptr i64) (param $haystack_len i64) (param $at_offset i64) (param $next_set_ptr i64) (param $next_set_len i32) (result i32 i32)
+    local.get $next_set_len
+    i32.const 0
+  )
+  (func $transition_s1 (;7;) (type $transition_fn) (param $haystack_ptr i64) (param $haystack_len i64) (param $at_offset i64) (param $next_set_ptr i64) (param $next_set_len i32) (result i32 i32)
     (local $byte i32) (local $next_state i32)
     local.get $at_offset
     local.get $haystack_len
@@ -204,7 +211,7 @@ expression: pretty
     call $branch_to_epsilon_closure
     i32.const 0
   )
-  (func $transition_s3 (;7;) (type $transition_fn) (param $haystack_ptr i64) (param $haystack_len i64) (param $at_offset i64) (param $next_set_ptr i64) (param $next_set_len i32) (result i32 i32)
+  (func $transition_s3 (;8;) (type $transition_fn) (param $haystack_ptr i64) (param $haystack_len i64) (param $at_offset i64) (param $next_set_ptr i64) (param $next_set_len i32) (result i32 i32)
     (local $byte i32) (local $next_state i32) (local $loop_index i32) (local $transition_start i32) (local $transition_end i32)
     local.get $at_offset
     local.get $haystack_len
@@ -283,51 +290,21 @@ expression: pretty
     call $branch_to_epsilon_closure
     i32.const 0
   )
-  (func $transition_s5 (;8;) (type $transition_fn) (param $haystack_ptr i64) (param $haystack_len i64) (param $at_offset i64) (param $next_set_ptr i64) (param $next_set_len i32) (result i32 i32)
+  (func $transition_s5 (;9;) (type $transition_fn) (param $haystack_ptr i64) (param $haystack_len i64) (param $at_offset i64) (param $next_set_ptr i64) (param $next_set_len i32) (result i32 i32)
     local.get $next_set_len
     i32.const 1
   )
-  (func $branch_to_transition (;9;) (type $branch_to_transition_fn) (param $haystack_ptr i64) (param $haystack_len i64) (param $at_offset i64) (param $next_set_ptr i64) (param $next_set_len i32) (param $state_id i32) (result i32 i32)
-    local.get $state_id
-    i32.const 1
-    i32.eq
-    if ;; label = @1
-      local.get $haystack_ptr
-      local.get $haystack_len
-      local.get $at_offset
-      local.get $next_set_ptr
-      local.get $next_set_len
-      call $transition_s1
-      return
-    end
-    local.get $state_id
-    i32.const 3
-    i32.eq
-    if ;; label = @1
-      local.get $haystack_ptr
-      local.get $haystack_len
-      local.get $at_offset
-      local.get $next_set_ptr
-      local.get $next_set_len
-      call $transition_s3
-      return
-    end
-    local.get $state_id
-    i32.const 5
-    i32.eq
-    if ;; label = @1
-      local.get $haystack_ptr
-      local.get $haystack_len
-      local.get $at_offset
-      local.get $next_set_ptr
-      local.get $next_set_len
-      call $transition_s5
-      return
-    end
+  (func $branch_to_transition (;10;) (type $branch_to_transition_fn) (param $haystack_ptr i64) (param $haystack_len i64) (param $at_offset i64) (param $next_set_ptr i64) (param $next_set_len i32) (param $state_id i32) (result i32 i32)
+    (local i32)
+    local.get $haystack_ptr
+    local.get $haystack_len
+    local.get $at_offset
+    local.get $next_set_ptr
     local.get $next_set_len
-    i32.const 0
+    local.get $state_id
+    call_indirect (type $transition_fn)
   )
-  (func $make_current_transitions (;10;) (type $make_current_transitions_fn) (param $haystack_ptr i64) (param $haystack_len i64) (param $at_offset i64) (param $current_set_ptr i64) (param $current_set_len i32) (param $next_set_ptr i64) (param $next_set_len i32) (result i32 i32)
+  (func $make_current_transitions (;11;) (type $make_current_transitions_fn) (param $haystack_ptr i64) (param $haystack_len i64) (param $at_offset i64) (param $current_set_ptr i64) (param $current_set_len i32) (param $next_set_ptr i64) (param $next_set_len i32) (result i32 i32)
     (local $loop_index i32) (local $state_id i32) (local $new_next_set_len i32)
     i32.const 0
     local.set $loop_index
@@ -372,7 +349,7 @@ expression: pretty
     local.get $new_next_set_len
     i32.const 0
   )
-  (func $lookup_start_id (;11;) (type $lookup_start_id_fn) (param $pattern_id i32) (result i32 i32)
+  (func $lookup_start_id (;12;) (type $lookup_start_id_fn) (param $pattern_id i32) (result i32 i32)
     local.get $pattern_id
     i32.const 1
     i32.ge_u
@@ -388,7 +365,7 @@ expression: pretty
     i32.load8_u $state offset=33
     i32.const 1
   )
-  (func $prepare_input (;12;) (type $prepare_input_fn) (param $haystack_len i64) (result i32)
+  (func $prepare_input (;13;) (type $prepare_input_fn) (param $haystack_len i64) (result i32)
     (local $num_new_page_required i64)
     local.get $haystack_len
     i64.const 0
@@ -427,7 +404,7 @@ expression: pretty
       i32.const 0
     end
   )
-  (func $start_config (;13;) (type $start_config_fn) (param $anchored i32) (param $anchored_pattern i32) (result i32 i32 i32)
+  (func $start_config (;14;) (type $start_config_fn) (param $anchored i32) (param $anchored_pattern i32) (result i32 i32 i32)
     (local $pattern_start i32)
     local.get $anchored
     i32.const 0
@@ -465,7 +442,7 @@ expression: pretty
     i32.const 0
     i32.const 0
   )
-  (func $is_match (;14;) (type $is_match_fn) (param $anchored i32) (param $anchored_pattern i32) (param $span_start i64) (param $span_end i64) (param $haystack_len i64) (result i32)
+  (func $is_match (;15;) (type $is_match_fn) (param $anchored i32) (param $anchored_pattern i32) (param $span_start i64) (param $span_end i64) (param $haystack_len i64) (result i32)
     (local $at_offset i64) (local $curr_set_ptr i64) (local $next_set_ptr i64) (local $curr_set_len i32) (local $next_set_len i32) (local $start_state_id i32) (local $is_anchored i32)
     local.get $anchored
     local.get $anchored_pattern

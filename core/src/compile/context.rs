@@ -1,13 +1,14 @@
 //! This module defines the `CompileContext` and associated structures
 //! used for compiling a regular expression NFA into a WASM module.
 
-use std::{alloc::Layout, collections::BTreeMap};
+use std::{alloc::Layout, borrow::Cow, collections::BTreeMap};
 
 use regex_automata::nfa::thompson::NFA;
 use wasm_encoder::{
-    BranchHint, BranchHints, CodeSection, ConstExpr, DataSection, ExportKind, ExportSection,
-    FunctionSection, ImportSection, IndirectNameMap, MemorySection, MemoryType, Module, NameMap,
-    NameSection, TypeSection, ValType,
+    BranchHint, BranchHints, CodeSection, ConstExpr, DataSection, ElementSection, Elements,
+    ExportKind, ExportSection, FunctionSection, ImportSection, IndirectNameMap, MemorySection,
+    MemoryType, Module, NameMap, NameSection, RefType, TableSection, TableType, TypeSection,
+    ValType,
 };
 
 /// This struct contains all the input and intermediate state needed to compile
@@ -28,13 +29,19 @@ pub struct Sections {
     types: TypeSection,
     imports: ImportSection,
     functions: FunctionSection,
+    tables: TableSection,
     memories: MemorySection,
     exports: ExportSection,
+    elements: ElementSection,
     data: DataSection,
+
+    // Name map
     function_names: NameMap,
+    table_names: NameMap,
     memory_names: NameMap,
     type_names: NameMap,
     data_names: NameMap,
+    element_names: NameMap,
 
     // Stores function definitions, keyed by FunctionIdx.0, to be assembled later.
     function_definitions: BTreeMap<u32, FunctionDefinition>,
@@ -71,6 +78,42 @@ impl CompileContext {
             sections: Sections::default(),
             state_id_layout,
         }
+    }
+
+    /// Declare a new table and active element that will fill the table with the
+    /// provided elements.
+    pub fn add_call_indirect_table(
+        &mut self,
+        name: String,
+        functions: impl IntoIterator<Item = FunctionIdx>,
+    ) -> TableIdx {
+        let functions: Vec<_> = functions.into_iter().map(u32::from).collect();
+        let size =
+            u64::try_from(functions.len()).expect("number of table elements should fit in u64");
+        let table_idx = self.sections.tables.len();
+        self.sections.tables.table(TableType {
+            element_type: RefType::FUNCREF,
+            table64: false,
+            minimum: size,
+            maximum: Some(size),
+            shared: false,
+        });
+
+        // We use an active element to copy all the function references into the table
+        // on module initialization
+        let element_idx = self.sections.elements.len();
+        self.sections.elements.active(
+            Some(table_idx),
+            &ConstExpr::i32_const(0),
+            Elements::Functions(Cow::Borrowed(&functions)),
+        );
+        self.sections
+            .table_names
+            .append(table_idx, &format!("{name}_table"));
+        self.sections
+            .element_names
+            .append(element_idx, &format!("{name}_elements"));
+        TableIdx(table_idx)
     }
 
     /// Declare and define a function.
@@ -223,6 +266,8 @@ impl CompileContext {
 
         module.section(&self.sections.functions);
 
+        module.section(&self.sections.tables);
+
         // Determine minimum (and maximum?) size based on data structure layout
         let haystack_mem_idx = self.sections.memories.len();
         self.sections.memories.memory(MemoryType {
@@ -262,6 +307,8 @@ impl CompileContext {
                 .export("state", ExportKind::Memory, state_mem_idx);
         }
         module.section(&self.sections.exports);
+
+        module.section(&self.sections.elements);
 
         // Build CodeSection, BranchHints, and name maps for locals/labels from
         // definitions
@@ -304,6 +351,14 @@ impl CompileContext {
         {
             name_section.functions(&self.sections.function_names);
 
+            name_section.locals(&local_names);
+
+            name_section.labels(&label_names);
+
+            name_section.types(&self.sections.type_names);
+
+            name_section.tables(&self.sections.table_names);
+
             {
                 self.sections
                     .memory_names
@@ -312,11 +367,7 @@ impl CompileContext {
             }
             name_section.memories(&self.sections.memory_names);
 
-            name_section.locals(&local_names);
-
-            name_section.labels(&label_names);
-
-            name_section.types(&self.sections.type_names);
+            name_section.elements(&self.sections.element_names);
 
             name_section.data(&self.sections.data_names);
         }
@@ -411,6 +462,16 @@ pub struct TypeIdx(u32);
 
 impl From<TypeIdx> for u32 {
     fn from(idx: TypeIdx) -> Self {
+        idx.0
+    }
+}
+
+/// This index type represents a pointer to a specific table.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct TableIdx(u32);
+
+impl From<TableIdx> for u32 {
+    fn from(idx: TableIdx) -> Self {
         idx.0
     }
 }

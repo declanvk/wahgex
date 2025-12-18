@@ -3,7 +3,7 @@
 
 use std::{
     alloc::{Layout, LayoutError},
-    collections::HashMap,
+    collections::{BTreeMap, HashMap},
     mem,
 };
 
@@ -13,7 +13,7 @@ use regex_automata::{
 };
 use wasm_encoder::{BlockType, InstructionSink, MemArg, NameMap, ValType};
 
-use crate::compile::context::FunctionTypeSignature;
+use crate::compile::context::{FunctionTypeSignature, TableIdx};
 
 use super::{
     CompileContext,
@@ -226,7 +226,7 @@ fn flatten_dense_transition(dense: &[StateID], state_id_layout: &Layout) -> Vec<
 #[derive(Debug)]
 pub struct TransitionFunctions {
     #[expect(dead_code)]
-    state_transitions: HashMap<StateID, FunctionIdx>,
+    state_transitions: BTreeMap<StateID, FunctionIdx>,
     #[expect(dead_code)]
     branch_to_transition: FunctionIdx,
     pub make_current_transitions: FunctionIdx,
@@ -241,7 +241,7 @@ impl TransitionFunctions {
         transition_layout: &TransitionLayout,
     ) -> Self {
         // NOTE: The indexes of the `states` array correspond to the `StateID` value.
-        let mut state_transitions = HashMap::new();
+        let mut state_transitions = BTreeMap::new();
 
         let transition_fn_type = ctx.declare_fn_type(&FunctionTypeSignature {
             name: "transition",
@@ -256,27 +256,15 @@ impl TransitionFunctions {
             // [new_next_set_len, is_match]
             results_ty: &[ValType::I32, ValType::I32],
         });
+        let no_op_transition_fn = ctx.add_function(Self::no_op_transition_fn());
 
-        let states = ctx.nfa.states();
-        for for_sid in (0..states.len()).map(StateID::new).map(Result::unwrap) {
+        let num_states = ctx.nfa.states().len();
+        let high =
+            StateID::try_from(num_states - 1).expect("num_states - 1 must be a valid state ID");
+        for for_sid in (0..num_states).map(StateID::new).map(Result::unwrap) {
             if !Self::needs_transition_fn(&ctx.nfa, for_sid) {
                 continue;
             }
-
-            //             sig: FunctionSignature {
-            //     name: format!("transition_s{}", for_sid.as_usize()),
-            //     // [haystack_ptr, haystack_len, at_offset, next_set_ptr, next_set_len]
-            //     params_ty: &[
-            //         ValType::I64,
-            //         ValType::I64,
-            //         ValType::I64,
-            //         ValType::I64,
-            //         ValType::I32,
-            //     ],
-            //     // [new_next_set_len, is_match]
-            //     results_ty: &[ValType::I32, ValType::I32],
-            //     export: false,
-            // },
 
             let transition_fn_def = Self::transition_fn(
                 for_sid,
@@ -294,8 +282,23 @@ impl TransitionFunctions {
             state_transitions.insert(for_sid, transition_idx);
         }
 
-        let branch_to_transition =
-            ctx.add_function(Self::branch_to_transition_fn(&state_transitions));
+        let branch_to_transition = if state_transitions.is_empty() {
+            ctx.add_function(Self::empty_branch_to_transition_fn())
+        } else {
+            let branch_to_transition_table = ctx.add_call_indirect_table(
+                "branch_to_transition".into(),
+                Self::branch_to_transition_table_elements(
+                    &state_transitions,
+                    no_op_transition_fn,
+                    high,
+                ),
+            );
+
+            ctx.add_function(Self::branch_to_transition_fn(
+                branch_to_transition_table,
+                transition_fn_type,
+            ))
+        };
 
         let branch_to_transition_is_match_block_sig = ctx.add_block_signature(BlockSignature {
             name: "branch_to_transition_is_match",
@@ -450,7 +453,7 @@ impl TransitionFunctions {
         }
     }
 
-    fn branch_to_transition_fn(state_transitions: &HashMap<StateID, FunctionIdx>) -> Function {
+    fn empty_branch_to_transition_fn() -> Function {
         let mut locals_name_map = NameMap::new();
         // Parameters
         locals_name_map.append(0, "haystack_ptr");
@@ -460,45 +463,121 @@ impl TransitionFunctions {
         locals_name_map.append(4, "next_set_len");
         locals_name_map.append(5, "state_id");
 
+        // Rust sketch:
+        // ```rust
+        // return [new_next_set_len, is_match]
+        // ```
+
         let mut body = wasm_encoder::Function::new([]);
-        let mut instructions = body.instructions();
+        body.instructions().local_get(4).bool_const(false).end();
 
-        let mut states = state_transitions.keys().copied().collect::<Vec<_>>();
-        states.sort();
+        Function {
+            sig: FunctionSignature {
+                name: "branch_to_transition".into(),
+                // [haystack_ptr, haystack_len, at_offset, next_set_ptr, next_set_len, state_id]
+                params_ty: &[
+                    // TODO(opt): Remove haystack_ptr and assume that haystack always starts at
+                    // offset 0 in memory 0
+                    ValType::I64,
+                    ValType::I64,
+                    ValType::I64,
+                    ValType::I64,
+                    ValType::I32,
+                    ValType::I32,
+                ],
+                // [new_next_set_len, is_match]
+                results_ty: &[ValType::I32, ValType::I32],
+                export: false,
+            },
+            def: FunctionDefinition {
+                body,
+                locals_name_map,
+                labels_name_map: None,
+                branch_hints: None,
+            },
+        }
+    }
 
-        // TODO(opt): Switch to using a `br_table` instead of a bunch of if-statements
-        // We would need to figure out the holes in the state IDs list and route those
-        // to the fallback block. See https://godbolt.org/z/ba89YPx3z for an example.
-        //
-        // Maybe we could also do a table and `call_indirect`? We'd have the same large
-        // mapping, but I think the number of instructions emitted would be a lot
-        // smaller. The downside might be perf hit on an indirect call, but I'm not sure
-        // its worse than the "many checks" situations. Similarly to the `br_table`,
-        // we'd need a dummy function for the holes in the state ID space.
-        //
-        // Playing around with the godbolt sample, if the spaces between occupied
-        // entries grows too large then the jump should be split into multiple levels
-        for sid in states {
-            let transition_fn = state_transitions.get(&sid).copied().unwrap();
-            instructions
-                .local_get(5) // state_id
-                .u32_const(sid.as_u32())
-                .i32_eq()
-                .if_(BlockType::Empty)
-                .local_get(0) // haystack_ptr
-                .local_get(1) // haystack_len
-                .local_get(2) // at_offset
-                .local_get(3) // next_set_ptr
-                .local_get(4) // next_set_len
-                .call(transition_fn.into())
-                .return_()
-                .end();
+    fn no_op_transition_fn() -> Function {
+        let mut locals_name_map = NameMap::new();
+        // Parameters
+        locals_name_map.append(0, "haystack_ptr");
+        locals_name_map.append(1, "haystack_len");
+        locals_name_map.append(2, "at_offset");
+        locals_name_map.append(3, "next_set_ptr");
+        locals_name_map.append(4, "next_set_len");
+
+        let mut body = wasm_encoder::Function::new([]);
+        body.instructions().local_get(4).bool_const(false).end();
+
+        Function {
+            sig: FunctionSignature {
+                name: "transition_no_op".into(),
+                // [haystack_ptr, haystack_len, at_offset, next_set_ptr, next_set_len]
+                params_ty: &[
+                    ValType::I64,
+                    ValType::I64,
+                    ValType::I64,
+                    ValType::I64,
+                    ValType::I32,
+                ],
+                // [new_next_set_len, is_match]
+                results_ty: &[ValType::I32, ValType::I32],
+                export: false,
+            },
+            def: FunctionDefinition {
+                body,
+                locals_name_map,
+                labels_name_map: None,
+                branch_hints: None,
+            },
+        }
+    }
+
+    fn branch_to_transition_table_elements(
+        state_transitions: &BTreeMap<StateID, FunctionIdx>,
+        no_op_transition_fn: FunctionIdx,
+        high: StateID,
+    ) -> Vec<FunctionIdx> {
+        let mut result = Vec::with_capacity(high.as_usize() + 1);
+        for state in 0..=high.as_u32() {
+            let state = StateID::try_from(state)
+                .expect("all values in the middle of two valid state IDs should also be valid");
+            match state_transitions.get(&state) {
+                Some(func_idx) => result.push(*func_idx),
+                None => result.push(no_op_transition_fn),
+            }
         }
 
-        // If it falls through to this point, then we must assume thats its a state
-        // which has no transition. In which case, we need to return the current
-        // `next_set_len` and `false` for is_match.
-        instructions.local_get(4).bool_const(false).end();
+        result
+    }
+
+    fn branch_to_transition_fn(table_idx: TableIdx, transition_func_type: TypeIdx) -> Function {
+        let mut locals_name_map = NameMap::new();
+        // Parameters
+        locals_name_map.append(0, "haystack_ptr");
+        locals_name_map.append(1, "haystack_len");
+        locals_name_map.append(2, "at_offset");
+        locals_name_map.append(3, "next_set_ptr");
+        locals_name_map.append(4, "next_set_len");
+        locals_name_map.append(5, "state_id");
+
+        // Rust sketch:
+        // ```rust
+        // call_indirect branch_to_transition_table table_idx
+        // ```
+
+        let mut body = wasm_encoder::Function::new([(1, ValType::I32)]);
+        body.instructions()
+            // call_indirect branch_to_transition_table table_idx
+            .local_get(0) // haystack_ptr
+            .local_get(1) // haystack_len
+            .local_get(2) // at_offset
+            .local_get(3) // next_set_ptr
+            .local_get(4) // next_set_len
+            .local_get(5)
+            .call_indirect(table_idx.into(), transition_func_type.into())
+            .end();
 
         Function {
             sig: FunctionSignature {
