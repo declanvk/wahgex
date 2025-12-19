@@ -78,7 +78,10 @@ mod tests {
     fn compile(pattern: &str) -> Result<RegexBytecode, Box<dyn std::error::Error>> {
         let nfa = regex_automata::nfa::thompson::NFA::new(pattern)?;
 
-        Ok(compile_from_nfa(nfa, crate::Config::new())?)
+        Ok(compile_from_nfa(
+            nfa,
+            crate::Config::new().include_names(true),
+        )?)
     }
 
     #[test]
@@ -91,7 +94,7 @@ mod tests {
     #[test]
     fn empty_pattern_list() {
         let nfa = regex_automata::nfa::thompson::NFA::new_many::<&str>(&[]).unwrap();
-        let bytecode = compile_from_nfa(nfa, crate::Config::new()).unwrap();
+        let bytecode = compile_from_nfa(nfa, crate::Config::new().include_names(true)).unwrap();
         let pretty = wasm_print_module(&bytecode);
         insta::assert_snapshot!(pretty);
     }
