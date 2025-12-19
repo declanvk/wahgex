@@ -14,7 +14,8 @@ pub(crate) struct Executor {
 }
 
 impl Executor {
-    /// TODO: Write docs for this item
+    /// Creates a new `Executor` with the given `wasmi` engine and
+    /// `RegexBytecode`.
     pub fn with_engine(engine: Engine, bytecode: &RegexBytecode) -> Result<Self, wasmi::Error> {
         let module = Module::new(&engine, bytecode)?;
         let mut store = Store::new(&engine, ());
@@ -33,26 +34,27 @@ impl Executor {
         })
     }
 
-    /// TODO: Write docs for this item
+    /// Returns a reference to the underlying `wasmi` instance.
     #[cfg(test)]
     pub(crate) fn instance(&self) -> &Instance {
         &self.instance
     }
 
-    /// TODO: Write docs for this item
+    /// Returns a reference to the `wasmi` store.
     #[cfg(test)]
     pub(crate) fn store(&self) -> &Store<()> {
         &self.store
     }
 
-    /// TODO: Write docs for this item
+    /// Returns a mutable reference to the `wasmi` store.
     #[cfg(test)]
     pub(crate) fn store_mut(&mut self) -> &mut Store<()> {
         &mut self.store
     }
 }
 
-/// TODO: Write docs for this item
+/// The main entry point for executing a compiled regular expression with the
+/// [`wasmi`] engine.
 #[derive(Debug)]
 pub struct Regex {
     executor: Executor,
@@ -62,16 +64,21 @@ pub struct Regex {
 }
 
 impl Regex {
-    /// TODO: Write docs for this item
+    /// Creates a new `Regex` instance with the default `wasmi` engine.
+    ///
+    /// This is a convenience function that uses the default [`Engine`]
+    /// configuration. For more control over the engine, use
+    /// [`with_engine`][Self::with_engine].
     pub fn new(bytecode: &RegexBytecode) -> Result<Self, wasmi::Error> {
         Self::with_engine(Engine::default(), bytecode)
     }
 
-    /// TODO: Write docs for this item
+    /// Creates a new `Regex` instance with the given `wasmi` engine.
     ///
     /// # Panics
     ///
-    /// TODO: Write docs for this item
+    /// This function will panic if the provided `RegexBytecode` is not
+    /// well-formed and is missing any of the expected functions or memory.
     pub fn with_engine(engine: Engine, bytecode: &RegexBytecode) -> Result<Self, wasmi::Error> {
         let executor = Executor::with_engine(engine, bytecode)?;
 
@@ -106,7 +113,7 @@ impl Regex {
         })
     }
 
-    /// TODO: Write docs for this item
+    /// Checks if the given input matches the regular expression.
     pub fn is_match(&mut self, input: regex_automata::Input<'_>) -> bool {
         common_input_validation(&input);
 

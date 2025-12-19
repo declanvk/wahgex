@@ -15,7 +15,7 @@ use super::{
     util::repeat,
 };
 
-/// TODO: Write docs for this item
+/// Defines the memory layout for data structures that are related to patterns.
 #[derive(Debug)]
 pub struct PatternLayout {
     pattern_start_table_pos: usize,
@@ -23,7 +23,7 @@ pub struct PatternLayout {
 }
 
 impl PatternLayout {
-    /// TODO: Write docs for this item
+    /// Initializes the memory layout of the pattern start table.
     pub fn new(ctx: &mut CompileContext, overall: Layout) -> Result<(Layout, Self), LayoutError> {
         let pattern_start_table_data = ctx
             .nfa
@@ -52,7 +52,7 @@ impl PatternLayout {
     }
 }
 
-/// TODO: Write docs for this item
+/// Holds the indices of the WASM functions that are related to patterns.
 #[derive(Debug)]
 pub struct PatternFunctions {
     pub lookup_start: FunctionIdx,

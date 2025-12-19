@@ -26,7 +26,12 @@ mod byte_word;
 mod perl_word;
 mod perl_word_optimized;
 
-/// TODO: Write docs for this item
+/// Defines the memory layout for the data structures required for lookaround
+/// assertions.
+///
+/// It holds optional layouts for the "is word byte" and "is perl word" lookup
+/// tables, which are only included if the regular expression contains the
+/// corresponding lookaround assertions.
 #[derive(Debug)]
 pub struct LookLayout {
     is_word_byte_table: Option<IsWordByteLookupTable>,
@@ -34,7 +39,12 @@ pub struct LookLayout {
 }
 
 impl LookLayout {
-    /// TODO: Write docs for this item
+    /// Initializes the memory layout for lookaround assertions.
+    ///
+    /// It checks which lookaround assertions are present in the regular
+    /// expression and, if necessary, creates and adds the corresponding
+    /// lookup tables to the WebAssembly (Wasm) module as active data
+    /// segments.
     pub fn new(
         ctx: &mut CompileContext,
         mut overall: Layout,
@@ -78,7 +88,7 @@ impl LookFunctions {
     // size 18.
     const NUM_LOOKS: usize = (Look::WordEndHalfUnicode.as_repr().ilog2() as usize) + 1;
 
-    /// TODO: Write docs for this item
+    /// Creates the WASM functions that implement the lookaround assertions.
     pub fn new(ctx: &mut CompileContext, layout: &LookLayout) -> Self {
         let mut look_matches = [None; Self::NUM_LOOKS];
         let look_set = modified_lookset_for_dependencies(&ctx.nfa);
@@ -230,7 +240,10 @@ impl LookFunctions {
         Self { look_matches }
     }
 
-    /// TODO: Write docs for this item
+    /// Returns the function index for a given lookaround assertion.
+    ///
+    /// If the lookaround assertion is not present in the regular expression,
+    /// this function will return `None`.
     pub fn look_matcher(&self, look: Look) -> Option<FunctionIdx> {
         self.look_matches[look.as_repr().ilog2() as usize]
     }
