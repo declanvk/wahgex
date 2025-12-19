@@ -1,4 +1,4 @@
-use wahgex::Builder;
+use wahgex::{Builder, Config};
 use wasm_bindgen::prelude::*;
 use wasmprinter::print_bytes;
 
@@ -20,6 +20,7 @@ pub struct CompileResult {
 #[wasm_bindgen]
 pub fn compile(regex: String) -> Result<CompileResult, String> {
     let (bytecode, context) = Builder::new()
+        .configure(Config::new().include_names(true))
         .build(&regex)
         .map_err(|err| err.to_string())?;
 

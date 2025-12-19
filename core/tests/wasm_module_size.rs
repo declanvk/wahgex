@@ -13,7 +13,8 @@ mod common;
 #[derive(Debug)]
 struct WasmSizeResult {
     group: String,
-    size: usize,
+    size_with_names: usize,
+    size_without_names: usize,
     name: String,
 }
 
@@ -29,19 +30,24 @@ fn wasm_module_size_of() {
                 return None;
             }
 
-            let (bytecode, _) = match compile(RegexContext::builder(), test, test.regexes())
-                .context(format!("compiling regex [{}]", test.full_name()))
-                .unwrap()
-            {
-                CompileOutput::Skip => {
-                    return None;
-                },
-                CompileOutput::Compiled(reg) => reg,
-            };
+            let (with_names, without_names) =
+                match compile(RegexContext::builder(), test, test.regexes())
+                    .context(format!("compiling regex [{}]", test.full_name()))
+                    .unwrap()
+                {
+                    CompileOutput::Skip => {
+                        return None;
+                    },
+                    CompileOutput::Compiled {
+                        with_names,
+                        without_names,
+                    } => (with_names, without_names),
+                };
 
             Some(WasmSizeResult {
                 group: test.group().into(),
-                size: bytecode.as_ref().len(),
+                size_with_names: with_names.as_ref().len(),
+                size_without_names: without_names.as_ref().len(),
                 name: test.name().into(),
             })
         })
@@ -73,10 +79,11 @@ fn format_grouped_results(
         for res in results {
             writeln!(
                 &mut formatted,
-                "{name:<width$} = {size}",
+                "{name:<width$} = {size_with_names}/{size_without_names}",
                 name = res.name,
                 width = max_name_len,
-                size = res.size
+                size_with_names = res.size_with_names,
+                size_without_names = res.size_without_names,
             )?;
         }
         writeln!(&mut formatted)?;
@@ -87,7 +94,10 @@ fn format_grouped_results(
 #[derive(Debug)]
 enum CompileOutput {
     Skip,
-    Compiled((RegexBytecode, RegexContext)),
+    Compiled {
+        with_names: RegexBytecode,
+        without_names: RegexBytecode,
+    },
 }
 
 fn compile(
@@ -99,12 +109,28 @@ fn compile(
         return Ok(CompileOutput::Skip);
     }
 
-    let result = match builder.build_many(regexes) {
+    let (with_names, _) = match builder
+        .configure(builder.get_config().clone().include_names(true))
+        .build_many(regexes)
+    {
         Ok(re) => re,
         Err(err) => {
             return Err(err.into());
         },
     };
 
-    Ok(CompileOutput::Compiled(result))
+    let (without_names, _) = match builder
+        .configure(builder.get_config().clone().include_names(false))
+        .build_many(regexes)
+    {
+        Ok(re) => re,
+        Err(err) => {
+            return Err(err.into());
+        },
+    };
+
+    Ok(CompileOutput::Compiled {
+        with_names,
+        without_names,
+    })
 }

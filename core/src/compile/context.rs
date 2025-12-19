@@ -57,7 +57,7 @@ impl Sections {
         let data_idx = self.data.len();
         // TODO: Make the memory index configurable or determined dynamically if
         // multiple memories are used beyond haystack (0) and state (1).
-        self.data.active(1, &offset, segment.data.iter().copied());
+        self.data.active(1, &offset, segment.data);
         self.data_names.append(data_idx, &segment.name);
     }
 }
@@ -302,27 +302,29 @@ impl CompileContext {
 
         module.section(&self.sections.data);
 
-        let mut name_section = NameSection::new();
-        {
-            name_section.functions(&self.sections.function_names);
-
-            name_section.locals(&local_names);
-
-            name_section.labels(&label_names);
-
-            name_section.types(&self.sections.type_names);
-
+        if self.config.get_include_names() {
+            let mut name_section = NameSection::new();
             {
-                self.sections
-                    .memory_names
-                    .append(haystack_mem_idx, "haystack");
-                self.sections.memory_names.append(state_mem_idx, "state"); // Assuming state_mem_idx is valid
-            }
-            name_section.memories(&self.sections.memory_names);
+                name_section.functions(&self.sections.function_names);
 
-            name_section.data(&self.sections.data_names);
+                name_section.locals(&local_names);
+
+                name_section.labels(&label_names);
+
+                name_section.types(&self.sections.type_names);
+
+                {
+                    self.sections
+                        .memory_names
+                        .append(haystack_mem_idx, "haystack");
+                    self.sections.memory_names.append(state_mem_idx, "state"); // Assuming state_mem_idx is valid
+                }
+                name_section.memories(&self.sections.memory_names);
+
+                name_section.data(&self.sections.data_names);
+            }
+            module.section(&name_section);
         }
-        module.section(&name_section);
 
         module
     }

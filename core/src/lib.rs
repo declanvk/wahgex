@@ -32,6 +32,7 @@ pub struct Config {
     export_state: Option<bool>,
     #[cfg(test)]
     export_all_functions: Option<bool>,
+    include_names: Option<bool>,
 }
 
 impl Config {
@@ -74,6 +75,26 @@ impl Config {
         self.export_all_functions.unwrap_or(false)
     }
 
+    /// Configures whether the output WASM module will contain a [name section]
+    /// identifying the module components.
+    ///
+    /// This value defaults to `false`, setting this to `true` will make it
+    /// easier to introspect the module.
+    ///
+    /// [name section]: https://webassembly.github.io/spec/core/appendix/custom.html#name-section
+    pub fn include_names(mut self, include_names: bool) -> Self {
+        self.include_names = Some(include_names);
+        self
+    }
+
+    /// Return `true` if the [name section] will be included in the output WASM
+    /// module.
+    ///
+    /// [name section]: https://webassembly.github.io/spec/core/appendix/custom.html#name-section
+    pub fn get_include_names(&self) -> bool {
+        self.include_names.unwrap_or(false)
+    }
+
     /// Returns the configured memory page size in bytes.
     pub fn get_page_size(&self) -> usize {
         Self::DEFAULT_PAGE_SIZE
@@ -82,13 +103,13 @@ impl Config {
     /// Overwrites the current configuration with options from another config.
     ///
     /// Options set in `other` take precedence over options in `self`.
-    #[cfg_attr(not(test), expect(unused_variables))]
     fn overwrite(self, other: Self) -> Self {
         Self {
             #[cfg(test)]
             export_state: other.export_state.or(self.export_state),
             #[cfg(test)]
             export_all_functions: other.export_all_functions.or(self.export_all_functions),
+            include_names: other.include_names.or(self.include_names),
         }
     }
 }
@@ -156,6 +177,11 @@ impl Builder {
     pub fn configure(&mut self, config: Config) -> &mut Builder {
         self.config = self.config.overwrite(config);
         self
+    }
+
+    /// Return the current [`Config`] setting.
+    pub fn get_config(&self) -> &Config {
+        &self.config
     }
 
     /// Configures the syntax options for the underlying regex compiler.

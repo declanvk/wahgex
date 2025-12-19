@@ -1,11 +1,14 @@
 use std::{env, iter};
 
-use wahgex::{Builder, RegexBytecode, RegexContext};
+use wahgex::{Builder, Config, RegexBytecode, RegexContext};
 
 fn main() {
     let input = env::args().nth(1).unwrap();
 
-    let (bytecode, context) = Builder::new().build(&input).unwrap();
+    let (bytecode, context) = Builder::new()
+        .configure(Config::new().include_names(true))
+        .build(&input)
+        .unwrap();
 
     eprint_input_info(&input, &bytecode, &context);
 
