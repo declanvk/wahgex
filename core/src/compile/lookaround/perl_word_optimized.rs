@@ -161,7 +161,7 @@ impl PerlWordLookupTable {
     }
 }
 
-/// TODO: Write docs for this item
+/// Holds the memory layout required for the Perl word character check.
 #[derive(Debug)]
 pub struct PerlWordLayout {
     index_table_position: u64,
@@ -174,7 +174,11 @@ pub struct PerlWordLayout {
 
 impl PerlWordLayout {
     const ACCEPT: u32 = 12;
-    /// TODO: Write docs for this item
+    /// A lookup table that maps each possible byte value (0-255) to a corresponding
+    /// character class.
+    ///
+    /// This is used by the UTF-8 decoder to determine the properties of a given
+    /// byte.
     #[rustfmt::skip]
     const CLASSES: [u8; 256] = [
         0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
@@ -187,7 +191,10 @@ impl PerlWordLayout {
        10,3,3,3,3,3,3,3,3,3,3,3,3,4,3,3, 11,6,6,6,5,8,8,8,8,8,8,8,8,8,8,8,
     ];
     const REJECT: u32 = 0;
-    /// TODO: Write docs for this item
+    /// A state transition table used by the UTF-8 decoder.
+    ///
+    /// It dictates the next state of the decoder based on the current state and the
+    /// class of the current byte.
     #[rustfmt::skip]
     const STATES_FORWARD: [u8; 108] = [
          0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
@@ -201,7 +208,8 @@ impl PerlWordLayout {
          0, 36,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
     ];
 
-    /// TODO: Write docs for this item
+    /// Initializes the memory layout of the Perl word character data
+    /// structures.
     pub fn new(
         ctx: &mut CompileContext,
         mut overall: Layout,
@@ -280,7 +288,11 @@ impl PerlWordLayout {
     }
 }
 
-/// TODO: Write docs for this item
+/// Holds the indices of the WASM functions related to the Perl word character
+/// check.
+///
+/// These indices are used to call the appropriate Wasm functions from the
+/// generated code.
 #[derive(Debug)]
 pub struct PerlWordFunctions {
     pub is_word_character: FunctionIdx,
@@ -291,14 +303,18 @@ pub struct PerlWordFunctions {
 }
 
 impl PerlWordFunctions {
-    /// TODO: Write docs for this item
+    /// A constant representing a value that is not a valid Unicode character.
+    ///
+    /// It is used to indicate cases where a character decoding operation has
+    /// failed.
     pub const INVALID_CHAR: u32 = {
         let invalid = char::MAX as u32 + 1;
         assert!(char::from_u32(invalid).is_none());
         invalid
     };
 
-    /// TODO: Write docs for this item
+    /// Creates the WASM functions that perform the Perl word character checks
+    /// and UTF-8 decoding.
     pub fn new(
         ctx: &mut CompileContext,
         layout: &PerlWordLayout,

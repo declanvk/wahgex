@@ -174,9 +174,10 @@ impl Builder {
 #[derive(Debug)]
 #[non_exhaustive]
 pub struct RegexContext {
-    /// TODO: Write docs for this item
+    /// The configuration used to build the regular expression.
     pub config: Config,
-    /// TODO: Write docs for this item
+    /// The non-deterministic finite automaton (NFA) used to build the regular
+    /// expression.
     pub nfa: ::regex_automata::nfa::thompson::NFA,
 }
 
@@ -200,21 +201,35 @@ pub struct RegexBytecode {
 }
 
 impl RegexBytecode {
-    /// TODO: Write docs for this item
+    /// Creates a `RegexBytecode` instance from a byte slice without performing
+    /// any validation.
+    ///
+    /// This is an unsafe operation that should only be used when the byte slice
+    /// is known to be a valid WebAssembly module with the expected shape.
+    /// For safe creation, use `from_bytes` instead.
     pub fn from_bytes_unchecked(bytes: impl Into<Vec<u8>>) -> Self {
         Self {
             bytes: bytes.into().into(),
         }
     }
 
-    /// TODO: Write docs for this item
+    /// Creates a `RegexBytecode` instance from a static byte slice without
+    /// performing any validation.
+    ///
+    /// This is an unsafe operation that should only be used when the byte slice
+    /// is known to be a valid WebAssembly module with the expected shape.
+    /// For safe creation, use `from_static_bytes` instead.
     pub const fn from_static_bytes_unchecked(bytes: &'static [u8]) -> Self {
         Self {
             bytes: Cow::Borrowed(bytes),
         }
     }
 
-    /// TODO: Write docs for this item
+    /// Creates a `RegexBytecode` instance from a byte slice after validating
+    /// that it is a valid WebAssembly module with the expected shape.
+    ///
+    /// This is the recommended way to create a `RegexBytecode` instance from a
+    /// dynamic byte slice.
     pub fn from_bytes(bytes: impl Into<Vec<u8>>) -> Result<Self, BuildError> {
         let bytes = bytes.into();
         let types = wasmparser::validate(&bytes)?;
@@ -223,7 +238,12 @@ impl RegexBytecode {
         Ok(Self::from_bytes_unchecked(bytes))
     }
 
-    /// TODO: Write docs for this item
+    /// Creates a `RegexBytecode` instance from a static byte slice after
+    /// validating that it is a valid WebAssembly module with the expected
+    /// shape.
+    ///
+    /// This is the recommended way to create a `RegexBytecode` instance from a
+    /// static byte slice.
     pub fn from_static_bytes(bytes: &'static [u8]) -> Result<Self, BuildError> {
         let types = wasmparser::validate(bytes)?;
         Self::validate_module_shape(types)?;
@@ -231,7 +251,7 @@ impl RegexBytecode {
         Ok(Self::from_static_bytes_unchecked(bytes))
     }
 
-    /// TODO: Write docs for this item
+    /// Returns reference to the bytecode.
     pub const fn as_ref(&self) -> &[u8] {
         match &self.bytes {
             Cow::Borrowed(bytes) => bytes,

@@ -43,7 +43,10 @@ impl IsWordByteLookupTable {
         self.position
     }
 
-    /// TODO: Write docs for this item
+    /// Initializes the memory layout of the word byte lookup table.
+    ///
+    /// This table is used to quickly determine if a given byte is a "word"
+    /// character in the ASCII range.
     pub fn new(
         ctx: &mut CompileContext,
         mut overall: Layout,
