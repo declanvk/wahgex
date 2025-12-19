@@ -1,7 +1,8 @@
 //! Utilities used to run [`wahgex`][crate] compiled regular expressions
 //! using [`wasmi`].
 
-use wasmi::{Engine, Instance, Linker, Memory, Module, Store, TypedFunc};
+pub use wasmi::Engine;
+use wasmi::{Instance, Linker, Memory, Module, Store, TypedFunc};
 
 use crate::{RegexBytecode, common_input_validation, input::InputOpts};
 

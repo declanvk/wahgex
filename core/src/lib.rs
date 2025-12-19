@@ -8,10 +8,14 @@ use std::borrow::Cow;
 
 #[cfg(feature = "compile")]
 use compile::compile_from_nfa;
+use regex_automata::nfa::thompson::Compiler;
+use wasmparser::types::Types;
 
 pub use crate::error::BuildError;
 pub use ::regex_automata::{
-    Input, nfa::thompson::Config as RegexNFAConfig, util::syntax::Config as RegexSyntaxConfig,
+    Input,
+    nfa::thompson::{Config as RegexNFAConfig, NFA},
+    util::syntax::Config as RegexSyntaxConfig,
 };
 
 #[cfg(feature = "compile")]
@@ -93,13 +97,13 @@ impl Config {
 #[derive(Clone, Debug)]
 pub struct Builder {
     config: Config,
-    thompson: regex_automata::nfa::thompson::Compiler,
+    thompson: Compiler,
 }
 
 impl Default for Builder {
     fn default() -> Self {
-        let default_nfa_config = regex_automata::nfa::thompson::Config::new().shrink(false);
-        let mut thompson = regex_automata::nfa::thompson::Compiler::new();
+        let default_nfa_config = RegexNFAConfig::new().shrink(false);
+        let mut thompson = Compiler::new();
         thompson.configure(default_nfa_config);
 
         Builder {
@@ -136,10 +140,7 @@ impl Builder {
     /// Compiles a Thompson NFA into a [`RegexBytecode`]
     /// and [`RegexContext`].
     #[cfg(feature = "compile")]
-    pub fn build_from_nfa(
-        &self,
-        nfa: regex_automata::nfa::thompson::NFA,
-    ) -> Result<(RegexBytecode, RegexContext), BuildError> {
+    pub fn build_from_nfa(&self, nfa: NFA) -> Result<(RegexBytecode, RegexContext), BuildError> {
         nfa.look_set_any().available()?;
         let compiled = compile_from_nfa(nfa.clone(), self.config)?;
         Ok((
@@ -178,7 +179,7 @@ pub struct RegexContext {
     pub config: Config,
     /// The non-deterministic finite automaton (NFA) used to build the regular
     /// expression.
-    pub nfa: ::regex_automata::nfa::thompson::NFA,
+    pub nfa: NFA,
 }
 
 impl RegexContext {
@@ -259,7 +260,7 @@ impl RegexBytecode {
         }
     }
 
-    fn validate_module_shape(_types: wasmparser::types::Types) -> Result<(), BuildError> {
+    fn validate_module_shape(_types: Types) -> Result<(), BuildError> {
         // TODO: Implement this so that we validate the expected shape of the
         // bytes
         Ok(())
