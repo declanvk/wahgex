@@ -55,12 +55,20 @@ impl IsWordByteLookupTable {
         let (new_overall, table_pos) = overall.extend(table_layout)?;
         overall = new_overall;
 
+        let data: Vec<_> = Self::UTF8_IS_WORD_BYTE_LUT
+            .into_iter()
+            .map(|b| b as u8)
+            .collect();
+
+        assert_eq!(
+            table_layout.size(),
+            data.len(),
+            "Segment data length must match layout size"
+        );
+
         ctx.sections.add_active_data_segment(ActiveDataSegment {
             name: "utf8_is_word_byte_table".into(),
-            data: Self::UTF8_IS_WORD_BYTE_LUT
-                .into_iter()
-                .map(|b| b as u8)
-                .collect(),
+            data,
             position: table_pos,
         });
 

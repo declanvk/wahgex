@@ -29,12 +29,17 @@ impl PatternLayout {
             .nfa
             .patterns()
             // WASM assumes little endian byte ordering: https://webassembly.org/docs/portability/
-            .flat_map(|pid| ctx.nfa.start_pattern(pid).unwrap().as_u32().to_le_bytes())
+            .flat_map(|pid| ctx.state_id_to_bytes(ctx.nfa.start_pattern(pid).unwrap()))
             .collect::<Vec<_>>();
 
         let (pattern_start_table, pattern_start_stride) =
             repeat(ctx.state_id_layout(), ctx.nfa.pattern_len())?;
         let (overall, pattern_start_table_pos) = overall.extend(pattern_start_table)?;
+        assert_eq!(
+            pattern_start_table.size(),
+            pattern_start_table_data.len(),
+            "Segment data length must match layout size"
+        );
 
         ctx.sections.add_active_data_segment(ActiveDataSegment {
             name: "pattern_start_table".into(),

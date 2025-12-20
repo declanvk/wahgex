@@ -3,11 +3,11 @@
 
 use std::{alloc::Layout, collections::BTreeMap};
 
-use regex_automata::nfa::thompson::NFA;
+use regex_automata::{nfa::thompson::NFA, util::primitives::StateID};
 use wasm_encoder::{
-    BranchHint, BranchHints, CodeSection, ConstExpr, DataSection, ExportKind, ExportSection,
-    FunctionSection, ImportSection, IndirectNameMap, MemorySection, MemoryType, Module, NameMap,
-    NameSection, TypeSection, ValType,
+    BranchHint, BranchHints, CodeSection, ConstExpr, DataCountSection, DataSection, ExportKind,
+    ExportSection, FunctionSection, ImportSection, IndirectNameMap, MemorySection, MemoryType,
+    Module, NameMap, NameSection, TypeSection, ValType,
 };
 
 /// This struct contains all the input and intermediate state needed to compile
@@ -23,13 +23,14 @@ pub struct CompileContext {
 
 /// Contains the various sections of a WASM module being built.
 /// Declarations are added here, and definitions are stored for later assembly.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Sections {
     types: TypeSection,
     imports: ImportSection,
     functions: FunctionSection,
     memories: MemorySection,
     exports: ExportSection,
+    data_count: DataCountSection,
     data: DataSection,
 
     // Name map
@@ -40,6 +41,25 @@ pub struct Sections {
 
     // Stores function definitions, keyed by FunctionIdx.0, to be assembled later.
     function_definitions: BTreeMap<u32, FunctionDefinition>,
+}
+
+impl Default for Sections {
+    fn default() -> Self {
+        Self {
+            types: Default::default(),
+            imports: Default::default(),
+            functions: Default::default(),
+            memories: Default::default(),
+            exports: Default::default(),
+            data_count: DataCountSection { count: 0 },
+            data: Default::default(),
+            function_names: Default::default(),
+            memory_names: Default::default(),
+            type_names: Default::default(),
+            data_names: Default::default(),
+            function_definitions: Default::default(),
+        }
+    }
 }
 
 impl Sections {
@@ -58,6 +78,7 @@ impl Sections {
         // TODO: Make the memory index configurable or determined dynamically if
         // multiple memories are used beyond haystack (0) and state (1).
         self.data.active(1, &offset, segment.data);
+        self.data_count.count += 1;
         self.data_names.append(data_idx, &segment.name);
     }
 }
@@ -186,6 +207,23 @@ impl CompileContext {
         &self.state_id_layout
     }
 
+    /// Based on [`state_id_layout`][Self::state_id_layout], return a stream of
+    /// bytes that is the minimal little-endian representation of the given
+    /// state ID.
+    pub fn state_id_to_bytes(&self, state_id: StateID) -> impl Iterator<Item = u8> {
+        match self.state_id_layout.size() {
+            1 | 2 | 4 => state_id
+                .as_u32()
+                .to_le_bytes()
+                .into_iter()
+                .take(self.state_id_layout.size()),
+            other => unreachable!(
+                "A StateID value should never have a size of [{other}], see \
+                 `Self::compute_state_id_layout`."
+            ),
+        }
+    }
+
     fn compute_state_id_layout(nfa: &NFA) -> Layout {
         let num_states = nfa.states().len();
 
@@ -264,6 +302,9 @@ impl CompileContext {
                 .export("state", ExportKind::Memory, state_mem_idx);
         }
         module.section(&self.sections.exports);
+
+        // Must go before the code section
+        module.section(&self.sections.data_count);
 
         // Build CodeSection, BranchHints, and name maps for locals/labels from
         // definitions

@@ -1,13 +1,9 @@
-use std::{env::current_dir, fs::OpenOptions, io::Read, sync::LazyLock};
+use std::{fs::OpenOptions, io::Read, sync::LazyLock};
 
 use gungraun::{library_benchmark, library_benchmark_group, main};
 use wahgex::{Builder, Input, engines::wasmi::Regex};
 
 fn read_haystack_from_path(path: &str) -> String {
-    eprintln!(
-        "Reading haystack at [{path}], current working directory is [{}]...",
-        current_dir().unwrap().display()
-    );
     let mut haystack_file = OpenOptions::new().read(true).open(path).unwrap();
     let mut buf = String::new();
     let _haystack = haystack_file.read_to_string(&mut buf).unwrap();

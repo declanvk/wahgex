@@ -117,6 +117,12 @@ impl TransitionLayout {
                     let (new_overall, range_table_pos) = overall.extend(range_lookup_table)?;
                     overall = new_overall;
 
+                    assert_eq!(
+                        range_lookup_table.size(),
+                        range_data.len(),
+                        "Segment data length must match layout size"
+                    );
+
                     ctx.sections.add_active_data_segment(ActiveDataSegment {
                         name: format!("sparse_range_table_{}", for_sid.as_u32()),
                         position: range_table_pos,
@@ -128,6 +134,12 @@ impl TransitionLayout {
                         repeat(&state_id_layout, transitions.len())?;
                     let (new_overall, state_id_table_pos) = overall.extend(state_id_table)?;
                     overall = new_overall;
+
+                    assert_eq!(
+                        state_id_table.size(),
+                        state_data.len(),
+                        "Segment data length must match layout size"
+                    );
 
                     ctx.sections.add_active_data_segment(ActiveDataSegment {
                         name: format!("sparse_state_id_table_{}", for_sid.as_u32()),
@@ -158,10 +170,18 @@ impl TransitionLayout {
                         }),
                     );
 
+                    let data = flatten_dense_transition(transitions, &state_id_layout);
+
+                    assert_eq!(
+                        lookup_table_layout.size(),
+                        data.len(),
+                        "Segment data length must match layout size"
+                    );
+
                     ctx.sections.add_active_data_segment(ActiveDataSegment {
                         name: format!("dense_table_{}", for_sid.as_u32()),
                         position: table_pos,
-                        data: flatten_dense_transition(transitions, &state_id_layout),
+                        data,
                     });
                 },
                 _ => {
@@ -849,7 +869,10 @@ impl TransitionFunctions {
             .loop_(BlockType::Empty)
             // if loop_index >= sparse_table.range_table_len {
             .local_get(7) // loop_index
-            .u32_const(u32::try_from(sparse_table.range_table_len).expect("table length should fit within u32"))
+            .u32_const(
+                u32::try_from(sparse_table.range_table_len)
+                    .expect("table length should fit within u32"),
+            )
             .i32_ge_u()
             .if_(BlockType::Empty)
             // return None
@@ -860,10 +883,7 @@ impl TransitionFunctions {
             // start = range_table[loop_index].0
             .local_get(7) // loop_index
             .i64_extend_i32_u()
-            .u64_const(
-                u64::try_from(sparse_table.range_lookup_table_stride)
-                    .unwrap()
-            )
+            .u64_const(u64::try_from(sparse_table.range_lookup_table_stride).unwrap())
             .i64_mul()
             .i32_load8_u(MemArg {
                 offset: u64::try_from(sparse_table.range_table_pos).unwrap(), // start is at offset 0
@@ -884,10 +904,7 @@ impl TransitionFunctions {
             // end = range_table[loop_index].1
             .local_get(7) // loop_index
             .i64_extend_i32_u()
-            .u64_const(
-                u64::try_from(sparse_table.range_lookup_table_stride)
-                    .unwrap()
-            )
+            .u64_const(u64::try_from(sparse_table.range_lookup_table_stride).unwrap())
             .i64_mul()
             .i32_load8_u(MemArg {
                 offset: u64::try_from(sparse_table.range_table_pos).unwrap() + 1, // end is at offset 1
@@ -903,12 +920,12 @@ impl TransitionFunctions {
             // next_state = state_table[loop_index]
             .local_get(7) // loop_index
             .i64_extend_i32_u()
-            .u64_const(
-                u64::try_from(sparse_table.state_id_table_stride)
-                    .unwrap()
-            )
+            .u64_const(u64::try_from(sparse_table.state_id_table_stride).unwrap())
             .i64_mul()
-            .state_id_load(u64::try_from(sparse_table.state_id_table_pos).unwrap(),  state_id_layout)
+            .state_id_load(
+                u64::try_from(sparse_table.state_id_table_pos).unwrap(),
+                state_id_layout,
+            )
             .local_set(6) // next_state
             // break;
             // jump to the end of the block outside of loop

@@ -222,6 +222,12 @@ impl PerlWordLayout {
             let (new_overall, table_pos) = overall.extend(table_index_layout)?;
             overall = new_overall;
 
+            assert_eq!(
+                table_index_layout.size(),
+                table.index.len(),
+                "Segment data length must match layout size"
+            );
+
             ctx.sections.add_active_data_segment(ActiveDataSegment {
                 name: "utf8_is_word_character_index_table".into(),
                 position: table_pos,
@@ -236,6 +242,12 @@ impl PerlWordLayout {
                 repeat(&Layout::new::<u8>(), table.leaves.len())?;
             let (new_overall, table_pos) = overall.extend(table_leaves_layout)?;
             overall = new_overall;
+
+            assert_eq!(
+                table_leaves_layout.size(),
+                table.leaves.len(),
+                "Segment data length must match layout size"
+            );
 
             ctx.sections.add_active_data_segment(ActiveDataSegment {
                 name: "utf8_is_word_character_leaves_table".into(),
@@ -252,6 +264,12 @@ impl PerlWordLayout {
             let (new_overall, table_pos) = overall.extend(table_classes_layout)?;
             overall = new_overall;
 
+            assert_eq!(
+                table_classes_layout.size(),
+                Self::CLASSES.len(),
+                "Segment data length must match layout size"
+            );
+
             ctx.sections.add_active_data_segment(ActiveDataSegment {
                 name: "utf8_decode_classes_table".into(),
                 position: table_pos,
@@ -262,10 +280,16 @@ impl PerlWordLayout {
         };
 
         let utf8_decode_states_forward_table_position = {
-            let (table_classes_layout, _table_stride) =
+            let (table_states_forward_layout, _table_stride) =
                 repeat(&Layout::new::<u8>(), Self::STATES_FORWARD.len())?;
-            let (new_overall, table_pos) = overall.extend(table_classes_layout)?;
+            let (new_overall, table_pos) = overall.extend(table_states_forward_layout)?;
             overall = new_overall;
+
+            assert_eq!(
+                table_states_forward_layout.size(),
+                Self::STATES_FORWARD.len(),
+                "Segment data length must match layout size"
+            );
 
             ctx.sections.add_active_data_segment(ActiveDataSegment {
                 name: "utf8_decode_states_forward_table".into(),
