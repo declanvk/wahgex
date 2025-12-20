@@ -762,5 +762,5 @@ expression: pretty
     end
     i32.const 0
   )
-  (data $pattern_start_table (;0;) (memory $state) (i64.const 36) "\02\00\00\00")
+  (data $pattern_start_table (;0;) (memory $state) (i64.const 36) "\02")
 )

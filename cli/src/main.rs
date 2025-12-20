@@ -48,7 +48,6 @@ fn eprint_fields(fields: &[(&str, String)]) {
     }
 }
 
-#[track_caller]
 pub fn wasm_print_module(module_bytes: impl AsRef<[u8]>) -> String {
     let module_bytes = module_bytes.as_ref();
     let wasm_text = wasmprinter::print_bytes(module_bytes);

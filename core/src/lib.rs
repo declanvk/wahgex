@@ -12,7 +12,7 @@ use regex_automata::nfa::thompson::Compiler;
 use wasmparser::types::Types;
 
 pub use crate::error::BuildError;
-pub use ::regex_automata::{
+pub use regex_automata::{
     Input,
     nfa::thompson::{Config as RegexNFAConfig, NFA},
     util::syntax::Config as RegexSyntaxConfig,
