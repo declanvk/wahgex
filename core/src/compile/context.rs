@@ -1,14 +1,18 @@
 //! This module defines the `CompileContext` and associated structures
 //! used for compiling a regular expression NFA into a WASM module.
 
-use std::{alloc::Layout, collections::BTreeMap};
+use std::{alloc::Layout, collections::BTreeMap, hash::Hash, mem};
 
+use highway::{HighwayHash, Key, PortableHash};
 use regex_automata::{nfa::thompson::NFA, util::primitives::StateID};
 use wasm_encoder::{
-    BranchHint, BranchHints, CodeSection, ConstExpr, DataCountSection, DataSection, ExportKind,
-    ExportSection, FunctionSection, ImportSection, IndirectNameMap, MemorySection, MemoryType,
-    Module, NameMap, NameSection, TypeSection, ValType,
+    BranchHint, BranchHints, CodeSection, ConstExpr, DataCountSection, DataSection, Encode,
+    ExportKind, ExportSection, FunctionSection, ImportSection, IndirectNameMap, MemorySection,
+    MemoryType, Module, NameMap, NameSection, TypeSection, ValType,
 };
+use wasmparser::{BinaryReader, DataKind, DataSectionReader, Name, Operator, Subsection};
+
+use crate::BuildError;
 
 /// This struct contains all the input and intermediate state needed to compile
 /// the WASM module.
@@ -23,14 +27,14 @@ pub struct CompileContext {
 
 /// Contains the various sections of a WASM module being built.
 /// Declarations are added here, and definitions are stored for later assembly.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Sections {
     types: TypeSection,
     imports: ImportSection,
     functions: FunctionSection,
     memories: MemorySection,
     exports: ExportSection,
-    data_count: DataCountSection,
+    data_count: u32,
     data: DataSection,
 
     // Name map
@@ -43,31 +47,14 @@ pub struct Sections {
     function_definitions: BTreeMap<u32, FunctionDefinition>,
 }
 
-impl Default for Sections {
-    fn default() -> Self {
-        Self {
-            types: Default::default(),
-            imports: Default::default(),
-            functions: Default::default(),
-            memories: Default::default(),
-            exports: Default::default(),
-            data_count: DataCountSection { count: 0 },
-            data: Default::default(),
-            function_names: Default::default(),
-            memory_names: Default::default(),
-            type_names: Default::default(),
-            data_names: Default::default(),
-            function_definitions: Default::default(),
-        }
-    }
-}
-
 impl Sections {
     /// Adds an active data segment to the data section.
     /// These segments are copied into a linear memory at a specified offset
     /// during instantiation. Currently, all active data segments are
     /// hardcoded to target memory index 1 (state memory).
     pub fn add_active_data_segment(&mut self, segment: ActiveDataSegment) {
+        // ODO: When we make state memory not memory64, switch to using an `i32.const`
+        // instead
         let offset = ConstExpr::i64_const(
             segment
                 .position
@@ -78,7 +65,7 @@ impl Sections {
         // TODO: Make the memory index configurable or determined dynamically if
         // multiple memories are used beyond haystack (0) and state (1).
         self.data.active(1, &offset, segment.data);
-        self.data_count.count += 1;
+        self.data_count += 1;
         self.data_names.append(data_idx, &segment.name);
     }
 }
@@ -240,7 +227,7 @@ impl CompileContext {
 impl CompileContext {
     /// This function takes all the individual settings/functions/data
     /// segments/layouts and compiles them into a single WASM [`Module`].
-    pub fn compile(mut self, state_overall: &Layout) -> Module {
+    pub fn compile(mut self, state_overall: &Layout) -> Result<Module, BuildError> {
         let mut module = Module::new();
 
         // Section order
@@ -303,8 +290,19 @@ impl CompileContext {
         }
         module.section(&self.sections.exports);
 
+        let (data_section, data_names, data_count) = if self.config.get_compact_data_section() {
+            let current_offset = module.len();
+            compact_data_section(current_offset, self.sections.data, self.sections.data_names)?
+        } else {
+            (
+                self.sections.data,
+                self.sections.data_names,
+                self.sections.data_count,
+            )
+        };
+
         // Must go before the code section
-        module.section(&self.sections.data_count);
+        module.section(&DataCountSection { count: data_count });
 
         // Build CodeSection, BranchHints, and name maps for locals/labels from
         // definitions
@@ -341,7 +339,7 @@ impl CompileContext {
 
         module.section(&codes);
 
-        module.section(&self.sections.data);
+        module.section(&data_section);
 
         if self.config.get_include_names() {
             let mut name_section = NameSection::new();
@@ -362,13 +360,157 @@ impl CompileContext {
                 }
                 name_section.memories(&self.sections.memory_names);
 
-                name_section.data(&self.sections.data_names);
+                name_section.data(&data_names);
             }
             module.section(&name_section);
         }
 
-        module
+        Ok(module)
     }
+}
+
+fn compact_data_section(
+    current_offset: usize,
+    data: DataSection,
+    data_names: NameMap,
+) -> Result<(DataSection, NameMap, u32), BuildError> {
+    // Ideally we'd pre-size this vector, but the `wasm-encoding` library doesn't
+    // give us any access to the raw bytes
+    let mut section_bytes = Vec::new();
+    data.encode(&mut section_bytes);
+
+    let mut name_bytes = Vec::new();
+    data_names.encode(&mut name_bytes);
+
+    let mut new_data_section = DataSection::new();
+    let mut new_data_names = NameMap::new();
+    let mut new_data_count = 0u32;
+
+    // The encoding of `section_bytes` looks something like:
+    //
+    // ```
+    // section_byte_len:leb128(u32) segment_count:leb128(u32) section_bytes:u8*
+    // ```
+    //
+    // We need to get rid of `section_byte_len` because the `DataSectionReader`
+    // assumes that part has been stripped. That value is implicitly the length of
+    // the slice passed to `BinaryReader`.
+    let mut reader = BinaryReader::new(&section_bytes, current_offset);
+    let _ = reader.read_var_u32()?;
+    let section_reader = DataSectionReader::new(reader)?;
+
+    // 9 is the sub-section ID for data names
+    let Name::Data(data_names) =
+        <Name as Subsection>::from_reader(9, BinaryReader::new(&name_bytes, current_offset))?
+    else {
+        unreachable!(
+            "Must be `Name::Data` because the data name sub-section ID is hard-coded above"
+        );
+    };
+
+    let mut all_active_segments = BTreeMap::new();
+
+    for (segment, name) in section_reader.into_iter().zip(data_names.into_iter()) {
+        let segment = segment?;
+        let name = name?;
+        // This analysis is a super-restricted version of the same thing that
+        // `wasm-opt` already does, though `wasm-opt` supports interpreting the
+        // constant expressions to get an actual value, instead of just
+        // assuming `{i32,i64}.const`.
+        match segment.kind {
+            DataKind::Active {
+                memory_index: 1,
+                offset_expr,
+            } if matches!(
+                offset_expr.get_operators_reader().into_iter().next(),
+                Some(Ok(Operator::I64Const { .. }))
+            ) =>
+            {
+                // TODO: When we convert state memory to non-memory64, update this to check for
+                // `I32Const` instead
+                let Some(Ok(Operator::I64Const { value })) =
+                    offset_expr.get_operators_reader().into_iter().next()
+                else {
+                    unreachable!("match guard already checked this condition");
+                };
+
+                let offset = usize::try_from(value)
+                    .expect("already performed this conversion in the opposite direction");
+
+                all_active_segments.insert(offset, (segment.data, name.name));
+            },
+            DataKind::Active { .. } | DataKind::Passive => {
+                new_data_section.raw(&section_bytes[segment.range]);
+            },
+        }
+    }
+
+    const HASH_KEY: [u64; 4] = [
+        2838337935062222553,
+        17674154047873536125,
+        2441950910458579046,
+        6426572504034188637,
+    ];
+
+    fn condense_segment_names(current_names: &[&str]) -> String {
+        if let [name] = current_names {
+            String::from(*name)
+        } else {
+            let mut hasher = PortableHash::new(Key(HASH_KEY));
+            current_names.hash(&mut hasher);
+            let name_hash = hasher.finalize64();
+            format!("{name_hash:x}_segments")
+        }
+    }
+
+    let mut current_segment = None;
+    for (offset, (segment_data, segment_name)) in all_active_segments {
+        let Some((current_offset, current_data, current_names)) = &mut current_segment else {
+            current_segment = Some((offset, Vec::from(segment_data), vec![segment_name]));
+            continue;
+        };
+
+        if *current_offset + current_data.len() == offset {
+            // Previous segment and current segment are continuous
+            current_data.extend_from_slice(segment_data);
+            current_names.push(segment_name);
+        } else {
+            // There is a gap between segments, need to flush `current_segment and continue`
+            let old_offset = mem::replace(current_offset, offset);
+            let old_data = mem::replace(current_data, Vec::from(segment_data));
+            let old_segment_name = condense_segment_names(current_names);
+            current_names.clear();
+            current_names.push(segment_name);
+
+            new_data_section.active(
+                1,
+                &ConstExpr::i64_const(
+                    i64::try_from(old_offset)
+                        .expect("already performed this conversion in the opposite direction"),
+                ),
+                old_data,
+            );
+            new_data_names.append(new_data_count, &old_segment_name);
+            new_data_count += 1;
+        }
+    }
+
+    if let Some((offset, data, current_names)) = current_segment {
+        let segment_name = condense_segment_names(&current_names);
+
+        new_data_section.active(
+            1,
+            &ConstExpr::i64_const(
+                i64::try_from(offset)
+                    .expect("already performed this conversion in the opposite direction"),
+            ),
+            data,
+        );
+        new_data_names.append(new_data_count, &segment_name);
+        new_data_count += 1;
+    }
+
+    Ok((new_data_section, new_data_names, new_data_count))
 }
 
 /// Represents an active data segment to be included in the WASM module.

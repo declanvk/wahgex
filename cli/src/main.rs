@@ -6,7 +6,11 @@ fn main() {
     let input = env::args().nth(1).unwrap();
 
     let (bytecode, context) = Builder::new()
-        .configure(Config::new().include_names(true))
+        .configure(
+            Config::new()
+                .include_names(true)
+                .compact_data_section(false),
+        )
         .build(&input)
         .unwrap();
 

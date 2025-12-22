@@ -283,7 +283,7 @@ pub mod tests {
 
         let _funcs = SparseSetFunctions::new(&mut ctx, layout);
 
-        let module = ctx.compile(&layout.set_overall);
+        let module = ctx.compile(&layout.set_overall).unwrap();
         module.finish()
     }
 

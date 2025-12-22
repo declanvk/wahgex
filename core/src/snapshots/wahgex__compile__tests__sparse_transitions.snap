@@ -554,7 +554,6 @@ expression: pretty
     end
     i32.const 0
   )
-  (data $sparse_range_table_3 (;0;) (memory $state) (i64.const 0) "abdegg")
-  (data $sparse_state_id_table_3 (;1;) (memory $state) (i64.const 6) "\04\04\04")
-  (data $pattern_start_table (;2;) (memory $state) (i64.const 33) "\02")
+  (data $2ed750fbb3b137d7_segments (;0;) (memory $state) (i64.const 0) "abdegg\04\04\04")
+  (data $pattern_start_table (;1;) (memory $state) (i64.const 33) "\02")
 )

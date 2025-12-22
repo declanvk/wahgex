@@ -1034,7 +1034,7 @@ mod tests {
         let _transition_functions =
             TransitionFunctions::new(&mut ctx, &epsilon_closures, &transition_layout);
 
-        let module_bytes = ctx.compile(&overall).finish();
+        let module_bytes = ctx.compile(&overall).unwrap().finish();
         let module_bytes = RegexBytecode::from_bytes_unchecked(module_bytes);
         let mut regex =
             crate::engines::wasmi::Executor::with_engine(::wasmi::Engine::default(), &module_bytes)
@@ -1284,7 +1284,7 @@ mod tests {
         let _transition_functions =
             TransitionFunctions::new(&mut ctx, &epsilon_closures, &transition_layout);
 
-        let module_bytes = ctx.compile(&overall).finish();
+        let module_bytes = ctx.compile(&overall).unwrap().finish();
         let module_bytes = RegexBytecode::from_bytes_unchecked(module_bytes);
         let mut regex =
             crate::engines::wasmi::Executor::with_engine(::wasmi::Engine::default(), &module_bytes)
