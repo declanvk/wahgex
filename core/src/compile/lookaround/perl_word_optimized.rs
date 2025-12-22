@@ -1093,7 +1093,7 @@ mod tests {
         assert_eq!(overall.align(), 1);
         assert_eq!(overall.size(), 7469);
 
-        let module = ctx.compile(&overall);
+        let module = ctx.compile(&overall).unwrap();
         let module_bytes = module.finish();
         let module_bytes = RegexBytecode::from_bytes_unchecked(module_bytes);
         crate::engines::wasmi::Executor::with_engine(::wasmi::Engine::default(), &module_bytes)

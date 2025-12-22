@@ -41,7 +41,7 @@ pub fn compile_from_nfa(
         &input_layout,
         &input_funcs,
     );
-    let module: wasm_encoder::Module = ctx.compile(&state_layout.overall);
+    let module: wasm_encoder::Module = ctx.compile(&state_layout.overall)?;
 
     Ok(RegexBytecode {
         bytes: module.finish().into(),
@@ -50,6 +50,8 @@ pub fn compile_from_nfa(
 
 #[cfg(test)]
 mod tests {
+    use crate::Config;
+
     use super::*;
 
     #[track_caller]
@@ -76,12 +78,16 @@ mod tests {
     /// A test helper function that compiles a regex pattern string into a
     /// [`CompiledRegex`].
     fn compile(pattern: &str) -> Result<RegexBytecode, Box<dyn std::error::Error>> {
+        compile_with_config(pattern, Config::new().include_names(true))
+    }
+
+    fn compile_with_config(
+        pattern: &str,
+        config: Config,
+    ) -> Result<RegexBytecode, Box<dyn std::error::Error>> {
         let nfa = regex_automata::nfa::thompson::NFA::new(pattern)?;
 
-        Ok(compile_from_nfa(
-            nfa,
-            crate::Config::new().include_names(true),
-        )?)
+        Ok(compile_from_nfa(nfa, config)?)
     }
 
     #[test]
@@ -94,7 +100,7 @@ mod tests {
     #[test]
     fn empty_pattern_list() {
         let nfa = regex_automata::nfa::thompson::NFA::new_many::<&str>(&[]).unwrap();
-        let bytecode = compile_from_nfa(nfa, crate::Config::new().include_names(true)).unwrap();
+        let bytecode = compile_from_nfa(nfa, Config::new().include_names(true)).unwrap();
         let pretty = wasm_print_module(&bytecode);
         insta::assert_snapshot!(pretty);
     }
@@ -193,6 +199,30 @@ mod tests {
     #[test]
     fn lookaround_is_unicode_half_start_end() {
         let compiled = compile(r"(?u:\b{start-half}hello\b{end-half})").unwrap();
+        let pretty = wasm_print_module(&compiled);
+        insta::assert_snapshot!(pretty);
+    }
+
+    #[test]
+    fn multiple_transition_tables_without_compact_data_segments() {
+        let compiled = compile_with_config(
+            r"(?-u)\w{5}",
+            Config::new()
+                .compact_data_section(false)
+                .include_names(true),
+        )
+        .unwrap();
+        let pretty = wasm_print_module(&compiled);
+        insta::assert_snapshot!(pretty);
+    }
+
+    #[test]
+    fn multiple_transition_tables_with_compact_data_segments() {
+        let compiled = compile_with_config(
+            r"(?-u)\w{5}",
+            Config::new().compact_data_section(true).include_names(true),
+        )
+        .unwrap();
         let pretty = wasm_print_module(&compiled);
         insta::assert_snapshot!(pretty);
     }

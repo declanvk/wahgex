@@ -35,6 +35,7 @@ impl PatternLayout {
         let (pattern_start_table, pattern_start_stride) =
             repeat(ctx.state_id_layout(), ctx.nfa.pattern_len())?;
         let (overall, pattern_start_table_pos) = overall.extend(pattern_start_table)?;
+
         assert_eq!(
             pattern_start_table.size(),
             pattern_start_table_data.len(),

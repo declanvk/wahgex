@@ -561,7 +561,7 @@ mod tests {
         let _epsilon_closure_functions =
             EpsilonClosureFunctions::new(&mut ctx, sparse_set_functions.insert, &look_funcs);
 
-        let module = ctx.compile(&overall);
+        let module = ctx.compile(&overall).unwrap();
         module.finish()
     }
 

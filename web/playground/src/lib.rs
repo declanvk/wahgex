@@ -20,7 +20,11 @@ pub struct CompileResult {
 #[wasm_bindgen]
 pub fn compile(regex: String) -> Result<CompileResult, String> {
     let (bytecode, context) = Builder::new()
-        .configure(Config::new().include_names(true))
+        .configure(
+            Config::new()
+                .include_names(true)
+                .compact_data_section(false),
+        )
         .build(&regex)
         .map_err(|err| err.to_string())?;
 

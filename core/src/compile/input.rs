@@ -365,7 +365,7 @@ mod tests {
             InputFunctions::new(&mut ctx, &input_layout, pattern_functions.lookup_start);
         let page_size = ctx.config.get_page_size();
 
-        let module = ctx.compile(&state_overall);
+        let module = ctx.compile(&state_overall).unwrap();
         let module_bytes = module.finish();
         let module_bytes = RegexBytecode::from_bytes_unchecked(module_bytes);
         let mut regex =

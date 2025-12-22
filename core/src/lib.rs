@@ -33,6 +33,7 @@ pub struct Config {
     #[cfg(test)]
     export_all_functions: Option<bool>,
     include_names: Option<bool>,
+    compact_data_section: Option<bool>,
 }
 
 impl Config {
@@ -100,6 +101,21 @@ impl Config {
         Self::DEFAULT_PAGE_SIZE
     }
 
+    /// Configures whether the output WASM module will have adjacent data
+    /// segments compacted into a single segment.
+    ///
+    /// This value defaults to `false`, setting this to `true` can make the WASM
+    /// module smaller in cases where there are many states in the regex.
+    pub fn compact_data_section(mut self, compact_data_section: bool) -> Self {
+        self.compact_data_section = Some(compact_data_section);
+        self
+    }
+
+    /// Return `true` if the WASM module data section will be compacted.
+    pub fn get_compact_data_section(&self) -> bool {
+        self.compact_data_section.unwrap_or(true)
+    }
+
     /// Overwrites the current configuration with options from another config.
     ///
     /// Options set in `other` take precedence over options in `self`.
@@ -110,6 +126,7 @@ impl Config {
             #[cfg(test)]
             export_all_functions: other.export_all_functions.or(self.export_all_functions),
             include_names: other.include_names.or(self.include_names),
+            compact_data_section: other.compact_data_section.or(self.compact_data_section),
         }
     }
 }
