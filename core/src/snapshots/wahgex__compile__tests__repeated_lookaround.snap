@@ -514,7 +514,7 @@ expression: pretty
     i64.extend_i32_u
     i64.const 1
     i64.mul
-    i32.load8_u $state offset=32
+    i32.load8_u $state
     i32.const 1
   )
   (func $prepare_input (;16;) (type $prepare_input_fn) (param $haystack_len i64) (result i32)
@@ -633,9 +633,9 @@ expression: pretty
     end
     local.set $is_anchored
     local.set $start_state_id
-    i64.const 0
+    i64.const 1
     local.set $curr_set_ptr
-    i64.const 16
+    i64.const 17
     local.set $next_set_ptr
     local.get $span_start
     local.set $at_offset
@@ -715,5 +715,5 @@ expression: pretty
     end
     i32.const 0
   )
-  (data $pattern_start_table (;0;) (memory $state) (i64.const 32) "\02")
+  (data $pattern_start_table (;0;) (memory $state) (i64.const 0) "\02")
 )

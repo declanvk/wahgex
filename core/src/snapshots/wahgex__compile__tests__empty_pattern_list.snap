@@ -148,7 +148,7 @@ expression: pretty
     i64.extend_i32_u
     i64.const 1
     i64.mul
-    i32.load8_u $state offset=4
+    i32.load8_u $state
     i32.const 1
   )
   (func $prepare_input (;6;) (type $prepare_input_fn) (param $haystack_len i64) (result i32)
@@ -320,5 +320,5 @@ expression: pretty
     end
     i32.const 0
   )
-  (data $pattern_start_table (;0;) (memory $state) (i64.const 4) "")
+  (data $pattern_start_table (;0;) (memory $state) (i64.const 0) "")
 )

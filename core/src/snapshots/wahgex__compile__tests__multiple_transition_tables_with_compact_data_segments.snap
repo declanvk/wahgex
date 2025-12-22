@@ -235,7 +235,7 @@ expression: pretty
         i64.extend_i32_u
         i64.const 2
         i64.mul
-        i32.load8_u $state
+        i32.load8_u $state offset=1
         local.tee $transition_start
         local.get $byte
         i32.gt_u
@@ -248,7 +248,7 @@ expression: pretty
           i64.extend_i32_u
           i64.const 2
           i64.mul
-          i32.load8_u $state offset=1
+          i32.load8_u $state offset=2
           local.set $transition_end
           local.get $byte
           local.get $transition_end
@@ -258,7 +258,7 @@ expression: pretty
             i64.extend_i32_u
             i64.const 1
             i64.mul
-            i32.load8_u $state offset=8
+            i32.load8_u $state offset=9
             local.set $next_state
             br $table_break_block
           end
@@ -314,7 +314,7 @@ expression: pretty
         i64.extend_i32_u
         i64.const 2
         i64.mul
-        i32.load8_u $state offset=12
+        i32.load8_u $state offset=13
         local.tee $transition_start
         local.get $byte
         i32.gt_u
@@ -327,7 +327,7 @@ expression: pretty
           i64.extend_i32_u
           i64.const 2
           i64.mul
-          i32.load8_u $state offset=13
+          i32.load8_u $state offset=14
           local.set $transition_end
           local.get $byte
           local.get $transition_end
@@ -337,7 +337,7 @@ expression: pretty
             i64.extend_i32_u
             i64.const 1
             i64.mul
-            i32.load8_u $state offset=20
+            i32.load8_u $state offset=21
             local.set $next_state
             br $table_break_block
           end
@@ -393,7 +393,7 @@ expression: pretty
         i64.extend_i32_u
         i64.const 2
         i64.mul
-        i32.load8_u $state offset=24
+        i32.load8_u $state offset=25
         local.tee $transition_start
         local.get $byte
         i32.gt_u
@@ -406,7 +406,7 @@ expression: pretty
           i64.extend_i32_u
           i64.const 2
           i64.mul
-          i32.load8_u $state offset=25
+          i32.load8_u $state offset=26
           local.set $transition_end
           local.get $byte
           local.get $transition_end
@@ -416,7 +416,7 @@ expression: pretty
             i64.extend_i32_u
             i64.const 1
             i64.mul
-            i32.load8_u $state offset=32
+            i32.load8_u $state offset=33
             local.set $next_state
             br $table_break_block
           end
@@ -472,7 +472,7 @@ expression: pretty
         i64.extend_i32_u
         i64.const 2
         i64.mul
-        i32.load8_u $state offset=36
+        i32.load8_u $state offset=37
         local.tee $transition_start
         local.get $byte
         i32.gt_u
@@ -485,7 +485,7 @@ expression: pretty
           i64.extend_i32_u
           i64.const 2
           i64.mul
-          i32.load8_u $state offset=37
+          i32.load8_u $state offset=38
           local.set $transition_end
           local.get $byte
           local.get $transition_end
@@ -495,7 +495,7 @@ expression: pretty
             i64.extend_i32_u
             i64.const 1
             i64.mul
-            i32.load8_u $state offset=44
+            i32.load8_u $state offset=45
             local.set $next_state
             br $table_break_block
           end
@@ -551,7 +551,7 @@ expression: pretty
         i64.extend_i32_u
         i64.const 2
         i64.mul
-        i32.load8_u $state offset=48
+        i32.load8_u $state offset=49
         local.tee $transition_start
         local.get $byte
         i32.gt_u
@@ -564,7 +564,7 @@ expression: pretty
           i64.extend_i32_u
           i64.const 2
           i64.mul
-          i32.load8_u $state offset=49
+          i32.load8_u $state offset=50
           local.set $transition_end
           local.get $byte
           local.get $transition_end
@@ -574,7 +574,7 @@ expression: pretty
             i64.extend_i32_u
             i64.const 1
             i64.mul
-            i32.load8_u $state offset=56
+            i32.load8_u $state offset=57
             local.set $next_state
             br $table_break_block
           end
@@ -734,7 +734,7 @@ expression: pretty
     i64.extend_i32_u
     i64.const 1
     i64.mul
-    i32.load8_u $state offset=100
+    i32.load8_u $state
     i32.const 1
   )
   (func $prepare_input (;16;) (type $prepare_input_fn) (param $haystack_len i64) (result i32)
@@ -829,9 +829,9 @@ expression: pretty
     end
     local.set $is_anchored
     local.set $start_state_id
-    i64.const 60
+    i64.const 61
     local.set $curr_set_ptr
-    i64.const 80
+    i64.const 81
     local.set $next_set_ptr
     local.get $span_start
     local.set $at_offset
@@ -906,6 +906,5 @@ expression: pretty
     end
     i32.const 0
   )
-  (data $15bea6516e84a1ef_segments (;0;) (memory $state) (i64.const 0) "09AZ__az\04\04\04\0409AZ__az\05\05\05\0509AZ__az\06\06\06\0609AZ__az\07\07\07\0709AZ__az\08\08\08\08")
-  (data $pattern_start_table (;1;) (memory $state) (i64.const 100) "\02")
+  (data $ec072dfee9907d5c_segments (;0;) (memory $state) (i64.const 0) "\0209AZ__az\04\04\04\0409AZ__az\05\05\05\0509AZ__az\06\06\06\0609AZ__az\07\07\07\0709AZ__az\08\08\08\08")
 )

@@ -33,11 +33,11 @@ impl StateLayout {
         // Using a ZST to start the layout so that we have minimal alignment
         // requirements
         let overall = Layout::new::<()>();
+        let (overall, pattern) = PatternLayout::new(ctx, overall)?;
         let (overall, transition) = TransitionLayout::new(ctx, overall)?;
+        let (overall, look) = LookLayout::new(ctx, overall)?;
         let (overall, first_sparse_set) = SparseSetLayout::new(ctx, overall)?;
         let (overall, second_sparse_set) = SparseSetLayout::new(ctx, overall)?;
-        let (overall, pattern) = PatternLayout::new(ctx, overall)?;
-        let (overall, look) = LookLayout::new(ctx, overall)?;
 
         let overall = overall.pad_to_align();
 
