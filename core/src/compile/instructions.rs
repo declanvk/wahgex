@@ -6,11 +6,12 @@ use std::alloc::Layout;
 use wasm_encoder::{InstructionSink, MemArg};
 
 pub trait InstructionSinkExt {
-    fn state_id_load(&mut self, offset: u64, state_id_layout: &Layout) -> &mut Self;
-    fn state_id_store(&mut self, offset: u64, state_id_layout: &Layout) -> &mut Self;
-
+    /// Write a new instruction that will load a state ID value from memory
+    /// (index 1)
+    fn state_id_load(&mut self, offset: u32, state_id_layout: &Layout) -> &mut Self;
+    fn state_id_store(&mut self, offset: u32, state_id_layout: &Layout) -> &mut Self;
+    fn state_load_u8(&mut self, offset: u32) -> &mut Self;
     fn haystack_load_u8(&mut self) -> &mut Self;
-
     fn u32_const(&mut self, val: u32) -> &mut Self;
     fn u64_const(&mut self, val: u64) -> &mut Self;
     fn bool_const(&mut self, b: bool) -> &mut Self;
@@ -29,8 +30,9 @@ impl InstructionSinkExt for InstructionSink<'_> {
         self.i64_const(i64::from_ne_bytes(val.to_ne_bytes()))
     }
 
-    fn state_id_load(&mut self, offset: u64, state_id_layout: &Layout) -> &mut Self {
+    fn state_id_load(&mut self, offset: u32, state_id_layout: &Layout) -> &mut Self {
         let state_id_size = state_id_layout.size();
+        let offset = u64::from(offset);
         if state_id_size == 1 {
             self.i32_load8_u(MemArg {
                 offset,
@@ -52,9 +54,10 @@ impl InstructionSinkExt for InstructionSink<'_> {
         }
     }
 
-    fn state_id_store(&mut self, offset: u64, state_id_layout: &Layout) -> &mut Self {
+    fn state_id_store(&mut self, offset: u32, state_id_layout: &Layout) -> &mut Self {
         let state_id_size = state_id_layout.size();
         let align = state_id_layout.align().ilog2();
+        let offset = u64::from(offset);
         if state_id_size == 1 {
             self.i32_store8(MemArg {
                 offset,
@@ -81,6 +84,15 @@ impl InstructionSinkExt for InstructionSink<'_> {
             offset: 0,
             align: 0,        // byte alignment
             memory_index: 0, // haystack
+        })
+    }
+
+    fn state_load_u8(&mut self, offset: u32) -> &mut Self {
+        let offset = u64::from(offset);
+        self.i32_load8_u(MemArg {
+            offset,
+            align: 0,
+            memory_index: 1,
         })
     }
 }

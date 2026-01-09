@@ -60,7 +60,7 @@ impl EpsilonClosureFunctions {
                 ValType::I64,
                 ValType::I64,
                 ValType::I64,
-                ValType::I64,
+                ValType::I32,
                 ValType::I32,
             ],
             // [new_next_set_len]
@@ -162,7 +162,7 @@ impl EpsilonClosureFunctions {
                     ValType::I64,
                     ValType::I64,
                     ValType::I64,
-                    ValType::I64,
+                    ValType::I32,
                     ValType::I32,
                     ValType::I32,
                 ],
@@ -573,7 +573,7 @@ mod tests {
                 .unwrap();
         let branch_to_epsilon_closure = regex
             .instance()
-            .get_typed_func::<(i64, i64, i64, i64, i32, i32), i32>(
+            .get_typed_func::<(i64, i64, i64, i32, i32, i32), i32>(
                 regex.store(),
                 "branch_to_epsilon_closure",
             )

@@ -7,7 +7,7 @@ use crate::compile::{
 
 #[derive(Debug)]
 pub struct IsWordByteLookupTable {
-    position: u64,
+    position: u32,
 }
 
 impl IsWordByteLookupTable {
@@ -39,7 +39,7 @@ impl IsWordByteLookupTable {
         set
     };
 
-    pub fn position(&self) -> u64 {
+    pub fn position(&self) -> u32 {
         self.position
     }
 

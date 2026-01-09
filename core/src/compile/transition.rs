@@ -11,7 +11,7 @@ use regex_automata::{
     nfa::thompson::{DenseTransitions, NFA, SparseTransitions, State, Transition},
     util::primitives::StateID,
 };
-use wasm_encoder::{BlockType, InstructionSink, MemArg, NameMap, ValType};
+use wasm_encoder::{BlockType, InstructionSink, NameMap, ValType};
 
 use crate::compile::context::FunctionTypeSignature;
 
@@ -270,7 +270,7 @@ impl TransitionFunctions {
                 ValType::I64,
                 ValType::I64,
                 ValType::I64,
-                ValType::I64,
+                ValType::I32,
                 ValType::I32,
             ],
             // [new_next_set_len, is_match]
@@ -396,11 +396,10 @@ impl TransitionFunctions {
             .end()
             // state_id = current_set_ptr.dense[loop_index]; // local 8
             .local_get(7)
-            .i64_extend_i32_u()
-            .u64_const(u64::try_from(state_id_layout.align()).unwrap())
-            .i64_mul()
+            .u32_const(state_id_layout.align().try_into().unwrap())
+            .i32_mul()
             .local_get(3)
-            .i64_add()
+            .i32_add()
             .state_id_load(0, state_id_layout)
             .local_set(8)
             // is_match, new_next_set_len = branch_to_transition(..)
@@ -442,9 +441,9 @@ impl TransitionFunctions {
                     ValType::I64,
                     ValType::I64,
                     ValType::I64,
-                    ValType::I64,
                     ValType::I32,
-                    ValType::I64,
+                    ValType::I32,
+                    ValType::I32,
                     ValType::I32,
                 ],
                 // current_set is not modified by this function, so we don't return a new length
@@ -489,7 +488,7 @@ impl TransitionFunctions {
                     ValType::I64,
                     ValType::I64,
                     ValType::I64,
-                    ValType::I64,
+                    ValType::I32,
                     ValType::I32,
                     ValType::I32,
                 ],
@@ -623,7 +622,7 @@ impl TransitionFunctions {
                     ValType::I64,
                     ValType::I64,
                     ValType::I64,
-                    ValType::I64,
+                    ValType::I32,
                     ValType::I32,
                     ValType::I32,
                 ],
@@ -878,14 +877,9 @@ impl TransitionFunctions {
             .end() // end if loop_index >= sparse_table.range_table_len {
             // start = range_table[loop_index].0
             .local_get(7) // loop_index
-            .i64_extend_i32_u()
-            .u64_const(u64::try_from(sparse_table.range_lookup_table_stride).unwrap())
-            .i64_mul()
-            .i32_load8_u(MemArg {
-                offset: u64::try_from(sparse_table.range_table_pos).unwrap(), // start is at offset 0
-                align: 0,
-                memory_index: 1,
-            })
+            .u32_const(sparse_table.range_lookup_table_stride.try_into().unwrap())
+            .i32_mul()
+            .state_load_u8(sparse_table.range_table_pos.try_into().unwrap())
             .local_tee(8) // transition_start
             // if start > byte {
             .local_get(5) // byte
@@ -899,14 +893,9 @@ impl TransitionFunctions {
             .else_()
             // end = range_table[loop_index].1
             .local_get(7) // loop_index
-            .i64_extend_i32_u()
-            .u64_const(u64::try_from(sparse_table.range_lookup_table_stride).unwrap())
-            .i64_mul()
-            .i32_load8_u(MemArg {
-                offset: u64::try_from(sparse_table.range_table_pos).unwrap() + 1, // end is at offset 1
-                align: 0,
-                memory_index: 1,
-            })
+            .u32_const(sparse_table.range_lookup_table_stride.try_into().unwrap())
+            .i32_mul()
+            .state_load_u8((sparse_table.range_table_pos + 1).try_into().unwrap())
             .local_set(9) // transition_end
             // if byte <= end {
             .local_get(5) // byte
@@ -915,11 +904,10 @@ impl TransitionFunctions {
             .if_(BlockType::Empty)
             // next_state = state_table[loop_index]
             .local_get(7) // loop_index
-            .i64_extend_i32_u()
-            .u64_const(u64::try_from(sparse_table.state_id_table_stride).unwrap())
-            .i64_mul()
+            .u32_const(sparse_table.state_id_table_stride.try_into().unwrap())
+            .i32_mul()
             .state_id_load(
-                u64::try_from(sparse_table.state_id_table_pos).unwrap(),
+                sparse_table.state_id_table_pos.try_into().unwrap(),
                 state_id_layout,
             )
             .local_set(6) // next_state
@@ -950,10 +938,9 @@ impl TransitionFunctions {
 
         instructions
             .local_get(5) // byte
-            .i64_extend_i32_u()
-            .u64_const(u64::try_from(table.table_stride).unwrap())
-            .i64_mul() // offset in table
-            .state_id_load(u64::try_from(table.table_pos).unwrap(), state_id_layout)
+            .u32_const(table.table_stride.try_into().unwrap())
+            .i32_mul() // offset in table
+            .state_id_load(table.table_pos.try_into().unwrap(), state_id_layout)
             .local_tee(6) // next_state
             // if next == StateID::ZERO
             .i32_eqz()
@@ -1038,7 +1025,7 @@ mod tests {
 
         let branch_to_transition = regex
             .instance()
-            .get_typed_func::<(i64, i64, i64, i64, i32, i32), (i32, i32)>(
+            .get_typed_func::<(i64, i64, i64, i32, i32, i32), (i32, i32)>(
                 regex.store(),
                 "branch_to_transition",
             )
@@ -1290,7 +1277,7 @@ mod tests {
             .instance()
             // [haystack_ptr, haystack_len, at_offset, current_set_ptr, current_set_len,
             // next_set_ptr, next_set_len]
-            .get_typed_func::<(i64, i64, i64, i64, i32, i64, i32), (i32, i32)>(
+            .get_typed_func::<(i64, i64, i64, i32, i32, i32, i32), (i32, i32)>(
                 regex.store(),
                 "make_current_transitions",
             )
@@ -1311,9 +1298,9 @@ mod tests {
             let haystack_ptr = 0;
             let haystack_len = 1;
             let at_offset = 0;
-            let current_set_ptr = current_set_layout.set_start_pos as i64;
+            let current_set_ptr = current_set_layout.set_start_pos as i32;
             let mut current_set_len = 0;
-            let next_set_ptr = next_set_layout.set_start_pos as i64;
+            let next_set_ptr = next_set_layout.set_start_pos as i32;
             let next_set_len = 0;
 
             // Write haystack byte into memory ahead of transition call

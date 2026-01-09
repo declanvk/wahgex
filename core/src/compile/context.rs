@@ -53,13 +53,11 @@ impl Sections {
     /// during instantiation. Currently, all active data segments are
     /// hardcoded to target memory index 1 (state memory).
     pub fn add_active_data_segment(&mut self, segment: ActiveDataSegment) {
-        // ODO: When we make state memory not memory64, switch to using an `i32.const`
-        // instead
-        let offset = ConstExpr::i64_const(
+        let offset = ConstExpr::i32_const(
             segment
                 .position
                 .try_into()
-                .expect("Data segment position too large for i64"),
+                .expect("Data segment position too large for i32"),
         );
         let data_idx = self.data.len();
         // TODO: Make the memory index configurable or determined dynamically if
@@ -264,11 +262,17 @@ impl CompileContext {
         let state_mem_idx = self.sections.memories.len();
         let state_mem_size =
             1 + u64::try_from((state_overall.size() - 1) / self.config.get_page_size()).unwrap();
+        assert!(
+            state_overall.size()
+                < usize::try_from(u32::MAX)
+                    .expect("No guarantee this library works with usize smaller than u32"),
+            "The compiled state size [{}] does not fit within 4GiB",
+            state_overall.size()
+        );
         self.sections.memories.memory(MemoryType {
             minimum: state_mem_size,
             maximum: Some(state_mem_size),
-            // TODO: Make state memory64 default false by config
-            memory64: true,
+            memory64: false,
             shared: false,
             // TODO: Use custom page size
             page_size_log2: None,
@@ -423,12 +427,10 @@ fn compact_data_section(
                 offset_expr,
             } if matches!(
                 offset_expr.get_operators_reader().into_iter().next(),
-                Some(Ok(Operator::I64Const { .. }))
+                Some(Ok(Operator::I32Const { .. }))
             ) =>
             {
-                // TODO: When we convert state memory to non-memory64, update this to check for
-                // `I32Const` instead
-                let Some(Ok(Operator::I64Const { value })) =
+                let Some(Ok(Operator::I32Const { value })) =
                     offset_expr.get_operators_reader().into_iter().next()
                 else {
                     unreachable!("match guard already checked this condition");
@@ -484,8 +486,8 @@ fn compact_data_section(
 
             new_data_section.active(
                 1,
-                &ConstExpr::i64_const(
-                    i64::try_from(old_offset)
+                &ConstExpr::i32_const(
+                    i32::try_from(old_offset)
                         .expect("already performed this conversion in the opposite direction"),
                 ),
                 old_data,
@@ -500,8 +502,8 @@ fn compact_data_section(
 
         new_data_section.active(
             1,
-            &ConstExpr::i64_const(
-                i64::try_from(offset)
+            &ConstExpr::i32_const(
+                i32::try_from(offset)
                     .expect("already performed this conversion in the opposite direction"),
             ),
             data,

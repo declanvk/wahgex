@@ -135,11 +135,10 @@ impl SparseSetFunctions {
         body.instructions()
             // let index = self.sparse[id];
             .local_get(2)
-            .i64_extend_i32_u()
-            .i64_const(layout.state_id_layout.size().try_into().unwrap())
-            .i64_mul() // need to scale the `state_id` index by the size of the elements of the array
+            .u32_const(layout.state_id_layout.size().try_into().unwrap())
+            .i32_mul() // need to scale the `state_id` index by the size of the elements of the array
             .local_get(0)
-            .i64_add()
+            .i32_add()
             .state_id_load(
                 // sparse array is after dense
                 layout.sparse_array_offset.try_into().unwrap(),
@@ -157,11 +156,10 @@ impl SparseSetFunctions {
             .end()
             // && self.dense[index] == id
             .local_get(3)
-            .i64_extend_i32_u()
-            .i64_const(layout.state_id_layout.size().try_into().unwrap())
-            .i64_mul() // need to scale the `state_id` index by the size of the elements of the array
+            .i32_const(layout.state_id_layout.size().try_into().unwrap())
+            .i32_mul() // need to scale the `state_id` index by the size of the elements of the array
             .local_get(0)
-            .i64_add()
+            .i32_add()
             .state_id_load(
                 // dense array is at offset 0
                 0,
@@ -174,7 +172,7 @@ impl SparseSetFunctions {
         Function {
             sig: FunctionSignature {
                 name: "sparse_set_contains".into(),
-                params_ty: &[ValType::I64, ValType::I32, ValType::I32],
+                params_ty: &[ValType::I32, ValType::I32, ValType::I32],
                 results_ty: &[ValType::I32],
                 export: false,
             },
@@ -217,11 +215,10 @@ impl SparseSetFunctions {
             .end()
             // self.dense[index] = id;
             .local_get(0) // set_len as index
-            .i64_extend_i32_u()
-            .i64_const(layout.state_id_layout.size().try_into().unwrap())
-            .i64_mul() // need to scale the `state_id` index by the size of the elements of the array
+            .i32_const(layout.state_id_layout.size().try_into().unwrap())
+            .i32_mul() // need to scale the `state_id` index by the size of the elements of the array
             .local_get(2) // set_ptr
-            .i64_add()
+            .i32_add()
             .local_get(1) // state_id
             .state_id_store(
                 // dense is at offset 0
@@ -230,11 +227,10 @@ impl SparseSetFunctions {
             )
             // self.sparse[id] = index;
             .local_get(1) // state_id
-            .i64_extend_i32_u()
-            .i64_const(layout.state_id_layout.size().try_into().unwrap())
-            .i64_mul() // need to scale the `state_id` index by the size of the elements of the array
+            .i32_const(layout.state_id_layout.size().try_into().unwrap())
+            .i32_mul() // need to scale the `state_id` index by the size of the elements of the array
             .local_get(2) // set_ptr
-            .i64_add()
+            .i32_add()
             .local_get(0) // set_len as index
             .state_id_store(
                 // sparse is after dense
@@ -250,7 +246,7 @@ impl SparseSetFunctions {
             sig: FunctionSignature {
                 name: "sparse_set_insert".into(),
                 // [set_len, state_id, set_ptr]
-                params_ty: &[ValType::I32, ValType::I32, ValType::I64],
+                params_ty: &[ValType::I32, ValType::I32, ValType::I32],
                 // [new_set_len]
                 results_ty: &[ValType::I32],
                 export: false,
@@ -287,8 +283,8 @@ pub mod tests {
         module.finish()
     }
 
-    type SetContainsFn = wasmi::TypedFunc<(i64, i32, i32), i32>;
-    type SetInsertFn = wasmi::TypedFunc<(i32, i32, i64), i32>;
+    type SetContainsFn = wasmi::TypedFunc<(i32, i32, i32), i32>;
+    type SetInsertFn = wasmi::TypedFunc<(i32, i32, i32), i32>;
 
     pub fn get_sparse_set_fns(
         instance: &wasmi::Instance,
@@ -298,11 +294,11 @@ pub mod tests {
         SetInsertFn,   // insert: (len, id, ptr) -> new_len
     ) {
         let sparse_set_contains = instance
-            .get_typed_func::<(i64, i32, i32), i32>(&store, "sparse_set_contains")
+            .get_typed_func::<(i32, i32, i32), i32>(&store, "sparse_set_contains")
             .unwrap();
 
         let sparse_set_insert = instance
-            .get_typed_func::<(i32, i32, i64), i32>(&store, "sparse_set_insert")
+            .get_typed_func::<(i32, i32, i32), i32>(&store, "sparse_set_insert")
             .unwrap();
 
         (sparse_set_contains, sparse_set_insert)
@@ -356,8 +352,8 @@ pub mod tests {
 
         let state_memory = regex.instance().get_memory(regex.store(), "state").unwrap();
 
-        let set_ptr = i64::from_ne_bytes(
-            u64::try_from(sparse_set_layout.set_start_pos)
+        let set_ptr = i32::from_ne_bytes(
+            u32::try_from(sparse_set_layout.set_start_pos)
                 .unwrap()
                 .to_ne_bytes(),
         );

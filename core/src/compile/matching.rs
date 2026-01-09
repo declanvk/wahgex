@@ -116,7 +116,7 @@ impl MatchingFunctions {
         // }
         // ```
 
-        let mut body = wasm_encoder::Function::new([(3, ValType::I64), (4, ValType::I32)]);
+        let mut body = wasm_encoder::Function::new([(1, ValType::I64), (6, ValType::I32)]);
         body.instructions()
             // (start_state_id, is_anchored, is_some) = start_config(anchored, anchored_pattern)
             .local_get(0) // anchored
@@ -137,10 +137,22 @@ impl MatchingFunctions {
             .local_set(11) // is_anchored
             .local_set(10) // start_state_id
             // curr_set_ptr = first_set_start_pos;
-            .u64_const(u64::try_from(state_layout.first_sparse_set.set_start_pos).unwrap())
+            .u32_const(
+                state_layout
+                    .first_sparse_set
+                    .set_start_pos
+                    .try_into()
+                    .unwrap(),
+            )
             .local_set(6) // curr_set_ptr
             // next_set_ptr = second_set_start_pos;
-            .u64_const(u64::try_from(state_layout.second_sparse_set.set_start_pos).unwrap())
+            .u32_const(
+                state_layout
+                    .second_sparse_set
+                    .set_start_pos
+                    .try_into()
+                    .unwrap(),
+            )
             .local_set(7) // next_set_ptr
             // at_offset = span_start
             .local_get(2) // span_start

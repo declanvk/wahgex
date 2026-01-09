@@ -4,7 +4,7 @@ use std::{
     sync::LazyLock,
 };
 
-use wasm_encoder::{BlockType, MemArg, NameMap, ValType};
+use wasm_encoder::{BlockType, NameMap, ValType};
 
 use crate::compile::{
     context::{
@@ -164,12 +164,12 @@ impl PerlWordLookupTable {
 /// Holds the memory layout required for the Perl word character check.
 #[derive(Debug)]
 pub struct PerlWordLayout {
-    index_table_position: u64,
-    index_table_len: u64,
-    leaves_table_position: u64,
+    index_table_position: u32,
+    index_table_len: u32,
+    leaves_table_position: u32,
 
-    utf8_decode_classes_table_position: u64,
-    utf8_decode_states_forward_table_position: u64,
+    utf8_decode_classes_table_position: u32,
+    utf8_decode_states_forward_table_position: u32,
 }
 
 impl PerlWordLayout {
@@ -216,7 +216,7 @@ impl PerlWordLayout {
     ) -> Result<(Layout, Self), LayoutError> {
         let table = PerlWordLookupTable::get();
 
-        let index_table_position: u64 = {
+        let index_table_position = {
             let (table_index_layout, _table_stride) =
                 repeat(&Layout::new::<u8>(), table.index.len())?;
             let (new_overall, table_pos) = overall.extend(table_index_layout)?;
@@ -234,10 +234,10 @@ impl PerlWordLayout {
                 data: table.index.clone(),
             });
 
-            table_pos.try_into().expect("position should fit in u64")
+            table_pos.try_into().expect("position should fit in u32")
         };
 
-        let leaves_table_position: u64 = {
+        let leaves_table_position = {
             let (table_leaves_layout, _table_stride) =
                 repeat(&Layout::new::<u8>(), table.leaves.len())?;
             let (new_overall, table_pos) = overall.extend(table_leaves_layout)?;
@@ -255,7 +255,7 @@ impl PerlWordLayout {
                 data: table.leaves.clone(),
             });
 
-            table_pos.try_into().expect("position should fit in u64")
+            table_pos.try_into().expect("position should fit in u32")
         };
 
         let utf8_decode_classes_table_position = {
@@ -276,7 +276,7 @@ impl PerlWordLayout {
                 data: Self::CLASSES.into(),
             });
 
-            table_pos.try_into().expect("position should fit in u64")
+            table_pos.try_into().expect("position should fit in u32")
         };
 
         let utf8_decode_states_forward_table_position = {
@@ -297,7 +297,7 @@ impl PerlWordLayout {
                 data: Self::STATES_FORWARD.into(),
             });
 
-            table_pos.try_into().expect("position should fit in u64")
+            table_pos.try_into().expect("position should fit in u32")
         };
 
         let table = Self {
@@ -405,7 +405,7 @@ impl PerlWordFunctions {
         // return (utf8_is_word_character_leaves_table[offset] >> (character % 8)) & 1 != 0
         // ```
 
-        let mut body = wasm_encoder::Function::new([(1, ValType::I32), (1, ValType::I64)]);
+        let mut body = wasm_encoder::Function::new([(2, ValType::I32)]);
 
         body.instructions()
             // if character <= 0x7F {
@@ -415,12 +415,7 @@ impl PerlWordFunctions {
             .if_(BlockType::Empty)
             //     return utf8_is_word_byte_table[character]
             .local_get(0)
-            .i64_extend_i32_u()
-            .i32_load8_u(MemArg {
-                offset: is_word_byte_table.position(),
-                align: 0, // byte alignment
-                memory_index: 1,
-            })
+            .state_load_u8(is_word_byte_table.position())
             .return_()
             // } - end if
             .end()
@@ -437,19 +432,14 @@ impl PerlWordFunctions {
                 i32::from_ne_bytes(shift.to_ne_bytes())
             })
             .i32_shr_u()
-            .i64_extend_i32_u()
             .local_tee(2)
             // if character < utf8_is_word_character_index_table.len() {
-            .u64_const(layout.index_table_len)
-            .i64_lt_u()
+            .u32_const(layout.index_table_len)
+            .i32_lt_u()
             .if_(BlockType::Empty)
             .local_get(2)
             //     chunk = utf8_is_word_character_index_table[index_offset]
-            .i32_load8_u(MemArg {
-                offset: layout.index_table_position,
-                align: 0, // byte alignment
-                memory_index: 1,
-            })
+            .state_load_u8(layout.index_table_position)
             .local_set(1)
             // } - end if
             .end()
@@ -466,12 +456,7 @@ impl PerlWordFunctions {
             .i32_rem_u()
             .i32_add()
             // return (utf8_is_word_character_leaves_table[offset] >> (character % 8)) & 1 != 0
-            .i64_extend_i32_u()
-            .i32_load8_u(MemArg {
-                offset: layout.leaves_table_position,
-                align: 0, // byte alignment
-                memory_index: 1,
-            })
+            .state_load_u8(layout.leaves_table_position)
             .local_get(0)
             .i32_const(8)
             .i32_rem_u()
@@ -611,13 +596,7 @@ impl PerlWordFunctions {
             .haystack_load_u8()
             .local_tee(2)
             //     let class = CLASSES[byte];
-            .i64_extend_i32_u()
-            .i32_load8_u(MemArg {
-                offset: layout.utf8_decode_classes_table_position,
-                align: 0,
-                // load from state memory
-                memory_index: 1,
-            })
+            .state_load_u8(layout.utf8_decode_classes_table_position)
             .local_set(6)
             //     if state == ACCEPT {
             .local_get(3)
@@ -647,13 +626,7 @@ impl PerlWordFunctions {
             .local_get(3)
             .local_get(6)
             .i32_add()
-            .i64_extend_i32_u()
-            .i32_load8_u(MemArg {
-                offset: layout.utf8_decode_states_forward_table_position,
-                align: 0,
-                // load from state memory
-                memory_index: 1,
-            })
+            .state_load_u8(layout.utf8_decode_states_forward_table_position)
             .local_set(3)
             //     index += 1;
             .local_get(5)
@@ -1030,7 +1003,7 @@ mod tests {
 
     use regex_automata::nfa::thompson::NFA;
 
-    use crate::{Config, RegexBytecode};
+    use crate::{Config, RegexBytecode, compile::tests::wasm_print_module};
 
     use super::*;
 
@@ -1080,8 +1053,16 @@ mod tests {
         let module = ctx.compile(&overall).unwrap();
         let module_bytes = module.finish();
         let module_bytes = RegexBytecode::from_bytes_unchecked(module_bytes);
-        crate::engines::wasmi::Executor::with_engine(::wasmi::Engine::default(), &module_bytes)
-            .unwrap()
+        match crate::engines::wasmi::Executor::with_engine(
+            ::wasmi::Engine::default(),
+            &module_bytes,
+        ) {
+            Ok(exec) => exec,
+            Err(err) => {
+                let repr = wasm_print_module(module_bytes.as_ref());
+                panic!("{err}\n{repr}")
+            },
+        }
     }
 
     #[test]
