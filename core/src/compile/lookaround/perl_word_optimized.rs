@@ -576,12 +576,7 @@ impl PerlWordFunctions {
             .end()
             // let byte = slice_ptr[0]
             .local_get(0)
-            .i32_load8_u(MemArg {
-                offset: 0,
-                align: 0,
-                // loading from haystack memory
-                memory_index: 0,
-            })
+            .haystack_load_u8()
             .local_tee(2)
             // if byte <= 0x7F {
             .i32_const(0x7F)
@@ -613,12 +608,7 @@ impl PerlWordFunctions {
             .local_get(0)
             .local_get(5)
             .i64_add()
-            .i32_load8_u(MemArg {
-                offset: 0,
-                align: 0,
-                // loading from haystack memory
-                memory_index: 0,
-            })
+            .haystack_load_u8()
             .local_tee(2)
             //     let class = CLASSES[byte];
             .i64_extend_i32_u()
@@ -833,13 +823,7 @@ impl PerlWordFunctions {
             .local_get(2)
             .local_get(0)
             .i64_add()
-            .i32_load8_u(MemArg {
-                offset: 0,
-                // loading a single byte
-                align: 0,
-                // from the haystack memory
-                memory_index: 0,
-            })
+            .haystack_load_u8()
             .i32_const(0b1100_0000)
             .i32_and()
             .i32_const(0b1000_0000)
