@@ -787,11 +787,7 @@ impl TransitionFunctions {
             .local_get(0) // haystack_ptr
             .local_get(2) // at_offset
             .i64_add()
-            .i32_load8_u(MemArg {
-                offset: 0,
-                align: 0,
-                memory_index: 0,
-            })
+            .haystack_load_u8()
             .local_set(5); // byte
     }
 

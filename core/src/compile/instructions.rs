@@ -7,8 +7,9 @@ use wasm_encoder::{InstructionSink, MemArg};
 
 pub trait InstructionSinkExt {
     fn state_id_load(&mut self, offset: u64, state_id_layout: &Layout) -> &mut Self;
-
     fn state_id_store(&mut self, offset: u64, state_id_layout: &Layout) -> &mut Self;
+
+    fn haystack_load_u8(&mut self) -> &mut Self;
 
     fn u32_const(&mut self, val: u32) -> &mut Self;
     fn u64_const(&mut self, val: u64) -> &mut Self;
@@ -73,5 +74,13 @@ impl InstructionSinkExt for InstructionSink<'_> {
                 memory_index: 1, // states are always stored in the state memory
             })
         }
+    }
+
+    fn haystack_load_u8(&mut self) -> &mut Self {
+        self.i32_load8_u(MemArg {
+            offset: 0,
+            align: 0,        // byte alignment
+            memory_index: 0, // haystack
+        })
     }
 }

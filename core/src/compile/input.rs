@@ -229,11 +229,7 @@ impl InputFunctions {
             .local_get(0)
             .local_get(2)
             .i64_add()
-            .i32_load8_u(wasm_encoder::MemArg {
-                offset: 0,       // no compile-time offset
-                align: 0,        // align of 1 since we're loading a byte
-                memory_index: 0, // loading from haystack
-            })
+            .haystack_load_u8()
             .local_set(3)
             // return (byte <= 0b0111_1111 || byte >= 0b1100_0000);
             .local_get(3)

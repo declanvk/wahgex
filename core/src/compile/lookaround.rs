@@ -321,11 +321,7 @@ impl LookFunctions {
             .i64_sub()
             .local_get(0)
             .i64_add()
-            .i32_load8_u(MemArg {
-                offset: 0,
-                align: 0,        // loading single byte
-                memory_index: 0, // haystack
-            })
+            .haystack_load_u8()
             .i32_const(look_matcher.get_line_terminator() as i32)
             .i32_eq()
             .end();
@@ -361,11 +357,7 @@ impl LookFunctions {
             .local_get(2)
             .local_get(0)
             .i64_add()
-            .i32_load8_u(MemArg {
-                offset: 0,
-                align: 0,        // loading single byte
-                memory_index: 0, // haystack
-            })
+            .haystack_load_u8()
             .i32_const(look_matcher.get_line_terminator() as i32)
             .i32_eq()
             .end();
@@ -413,11 +405,7 @@ impl LookFunctions {
             .i64_sub()
             .local_get(0)
             .i64_add()
-            .i32_load8_u(MemArg {
-                offset: 0,
-                align: 0,        // byte alignment
-                memory_index: 0, // haystack
-            })
+            .haystack_load_u8()
             .i32_const(b'\n' as i32)
             .i32_eq()
             .if_(BlockType::Empty)
@@ -430,11 +418,7 @@ impl LookFunctions {
             .i64_sub()
             .local_get(0)
             .i64_add()
-            .i32_load8_u(MemArg {
-                offset: 0,
-                align: 0,        // byte alignment
-                memory_index: 0, // haystack
-            })
+            .haystack_load_u8()
             .i32_const(b'\r' as i32)
             .i32_ne()
             .if_(BlockType::Empty)
@@ -453,11 +437,7 @@ impl LookFunctions {
             .local_get(2)
             .local_get(0)
             .i64_add()
-            .i32_load8_u(MemArg {
-                offset: 0,
-                align: 0,        // byte alignment
-                memory_index: 0, // haystack
-            })
+            .haystack_load_u8()
             .i32_const(b'\n' as i32)
             .i32_ne()
             .end();
@@ -509,11 +489,7 @@ impl LookFunctions {
             .local_get(2)
             .local_get(0)
             .i64_add()
-            .i32_load8_u(MemArg {
-                offset: 0,
-                align: 0,        // byte alignment
-                memory_index: 0, // haystack
-            })
+            .haystack_load_u8()
             .i32_const(b'\r' as i32)
             .i32_eq()
             .if_(BlockType::Empty)
@@ -524,11 +500,7 @@ impl LookFunctions {
             .local_get(2)
             .local_get(0)
             .i64_add()
-            .i32_load8_u(MemArg {
-                offset: 0,
-                align: 0,        // byte alignment
-                memory_index: 0, // haystack
-            })
+            .haystack_load_u8()
             .i32_const(b'\n' as i32)
             .i32_ne()
             .if_(BlockType::Empty)
@@ -548,11 +520,7 @@ impl LookFunctions {
             .i64_sub()
             .local_get(0)
             .i64_add()
-            .i32_load8_u(MemArg {
-                offset: 0,
-                align: 0,        // byte alignment
-                memory_index: 0, // haystack
-            })
+            .haystack_load_u8()
             .i32_const(b'\r' as i32)
             .i32_ne()
             .end();
@@ -1173,11 +1141,7 @@ impl LookFunctions {
             .i64_sub()
             .local_get(0)
             .i64_add()
-            .i32_load8_u(MemArg {
-                offset: 0,
-                align: 0,        // byte alignment
-                memory_index: 0, // haystack
-            })
+            .haystack_load_u8()
             .i64_extend_i32_u()
             .i32_load8_u(MemArg {
                 offset: is_word_byte_table.position(),
@@ -1213,11 +1177,7 @@ impl LookFunctions {
             .local_get(2)
             .local_get(0)
             .i64_add()
-            .i32_load8_u(MemArg {
-                offset: 0,
-                align: 0,        // byte alignment
-                memory_index: 0, // haystack
-            })
+            .haystack_load_u8()
             .i64_extend_i32_u()
             .i32_load8_u(MemArg {
                 offset: is_word_byte_table.position(),
