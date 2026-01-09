@@ -106,11 +106,10 @@ impl PatternFunctions {
             .end()
             // start_state_id = pattern_start_table[pattern_id];
             .local_get(0)
-            .i64_extend_i32_u()
-            .u64_const(u64::try_from(layout.pattern_start_stride).unwrap())
-            .i64_mul()
+            .u32_const(u32::try_from(layout.pattern_start_stride).unwrap())
+            .i32_mul()
             .state_id_load(
-                u64::try_from(layout.pattern_start_table_pos).unwrap(),
+                layout.pattern_start_table_pos.try_into().unwrap(),
                 // state memory
                 state_id_layout,
             )

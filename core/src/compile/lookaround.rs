@@ -7,7 +7,7 @@ use regex_automata::{
     nfa::thompson::NFA,
     util::look::{Look, LookMatcher, LookSet},
 };
-use wasm_encoder::{BlockType, InstructionSink, MemArg, NameMap, ValType};
+use wasm_encoder::{BlockType, InstructionSink, NameMap, ValType};
 
 use crate::compile::{
     context::FunctionTypeSignature,
@@ -1142,12 +1142,7 @@ impl LookFunctions {
             .local_get(0)
             .i64_add()
             .haystack_load_u8()
-            .i64_extend_i32_u()
-            .i32_load8_u(MemArg {
-                offset: is_word_byte_table.position(),
-                align: 0, // byte alignment
-                memory_index: 1,
-            })
+            .state_load_u8(is_word_byte_table.position())
             .end();
     }
 
@@ -1178,12 +1173,7 @@ impl LookFunctions {
             .local_get(0)
             .i64_add()
             .haystack_load_u8()
-            .i64_extend_i32_u()
-            .i32_load8_u(MemArg {
-                offset: is_word_byte_table.position(),
-                align: 0, // byte alignment
-                memory_index: 1,
-            })
+            .state_load_u8(is_word_byte_table.position())
             .end();
     }
 }
