@@ -1,6 +1,7 @@
 //! This module contains types and functions related to public-facing errors.
 
 use std::{alloc::LayoutError, error::Error, fmt};
+use wasmparser::ExternalKind;
 
 /// Represents an error that can occur during the regex compilation process.
 ///
@@ -11,6 +12,28 @@ pub struct BuildError {
     kind: Box<BuildErrorKind>,
 }
 
+impl BuildError {
+    pub(crate) fn missing_export(name: impl Into<String>) -> Self {
+        Self {
+            kind: Box::new(BuildErrorKind::MissingExport(name.into())),
+        }
+    }
+
+    pub(crate) fn incorrect_export_type(
+        name: impl Into<String>,
+        expected: ExternalKind,
+        found: ExternalKind,
+    ) -> Self {
+        Self {
+            kind: Box::new(BuildErrorKind::IncorrectExportType {
+                name: name.into(),
+                expected,
+                found,
+            }),
+        }
+    }
+}
+
 impl fmt::Display for BuildError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &*self.kind {
@@ -18,6 +41,17 @@ impl fmt::Display for BuildError {
             BuildErrorKind::NFABuild(err) => err.fmt(f),
             BuildErrorKind::LookaroundUnicode(err) => err.fmt(f),
             BuildErrorKind::WasmBytesValidationError(err) => err.fmt(f),
+            BuildErrorKind::MissingExport(name) => write!(f, "missing required export `{name}`"),
+            BuildErrorKind::IncorrectExportType {
+                name,
+                expected,
+                found,
+            } => {
+                write!(
+                    f,
+                    "incorrect export type for `{name}`: expected {expected:?}, found {found:?}",
+                )
+            },
         }
     }
 }
@@ -29,6 +63,7 @@ impl Error for BuildError {
             BuildErrorKind::NFABuild(err) => Some(err),
             BuildErrorKind::LookaroundUnicode(err) => Some(err),
             BuildErrorKind::WasmBytesValidationError(err) => Some(err),
+            _ => None,
         }
     }
 }
@@ -75,4 +110,10 @@ enum BuildErrorKind {
     NFABuild(regex_automata::nfa::thompson::BuildError),
     LookaroundUnicode(regex_automata::util::look::UnicodeWordBoundaryError),
     WasmBytesValidationError(wasmparser::BinaryReaderError),
+    MissingExport(String),
+    IncorrectExportType {
+        name: String,
+        expected: ExternalKind,
+        found: ExternalKind,
+    },
 }
