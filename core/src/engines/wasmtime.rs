@@ -1,8 +1,10 @@
 //! Utilities used to run [`wahgex`][crate] compiled regular expressions
-//! using [`wasmi`].
+//! using [`wasmtime`].
 
-pub use wasmi;
-use wasmi::{Engine, Instance, Linker, Memory, Module, Store, TypedFunc};
+use std::fmt;
+
+pub use wasmtime;
+use wasmtime::{Engine, Instance, Linker, Memory, Module, Store, TypedFunc};
 
 use crate::{RegexBytecode, common_input_validation, engines::IsMatchArgs, input::InputOpts};
 
@@ -15,17 +17,13 @@ pub(crate) struct Executor {
 }
 
 impl Executor {
-    /// Creates a new `Executor` with the given `wasmi` engine and
+    /// Creates a new `Executor` with the given `wasmtime` engine and
     /// `RegexBytecode`.
-    pub fn with_engine(engine: Engine, bytecode: &RegexBytecode) -> Result<Self, wasmi::Error> {
+    pub fn with_engine(engine: Engine, bytecode: &RegexBytecode) -> Result<Self, wasmtime::Error> {
         let module = Module::new(&engine, bytecode)?;
         let mut store = Store::new(&engine, ());
         let linker = Linker::<()>::new(&engine);
-        let instance = linker
-            .instantiate(&mut store, &module)
-            .unwrap()
-            .start(&mut store)
-            .unwrap();
+        let instance = linker.instantiate(&mut store, &module).unwrap();
 
         Ok(Self {
             _engine: engine,
@@ -34,29 +32,10 @@ impl Executor {
             instance,
         })
     }
-
-    /// Returns a reference to the underlying `wasmi` instance.
-    #[cfg(test)]
-    pub(crate) fn instance(&self) -> &Instance {
-        &self.instance
-    }
-
-    /// Returns a reference to the `wasmi` store.
-    #[cfg(test)]
-    pub(crate) fn store(&self) -> &Store<()> {
-        &self.store
-    }
-
-    /// Returns a mutable reference to the `wasmi` store.
-    #[cfg(test)]
-    pub(crate) fn store_mut(&mut self) -> &mut Store<()> {
-        &mut self.store
-    }
 }
 
 /// The main entry point for executing a compiled regular expression with the
-/// [`wasmi`] engine.
-#[derive(Debug)]
+/// [`wasmtime`] engine.
 pub struct Regex {
     executor: Executor,
     prepare_input: TypedFunc<i64, i32>,
@@ -64,28 +43,45 @@ pub struct Regex {
     haystack: Memory,
 }
 
+impl fmt::Debug for Regex {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let Self {
+            executor,
+            prepare_input: _,
+            is_match: _,
+            haystack,
+        } = self;
+        f.debug_struct("Regex")
+            .field("executor", &executor)
+            .field("prepare_input", &"[...]")
+            .field("is_match", &"[...]")
+            .field("haystack", &haystack)
+            .finish()
+    }
+}
+
 impl Regex {
-    /// Creates a new `Regex` instance with the default `wasmi` engine.
+    /// Creates a new `Regex` instance with the default `wasmtime` engine.
     ///
     /// This is a convenience function that uses the default [`Engine`]
     /// configuration. For more control over the engine, use
     /// [`with_engine`][Self::with_engine].
-    pub fn new(bytecode: &RegexBytecode) -> Result<Self, wasmi::Error> {
+    pub fn new(bytecode: &RegexBytecode) -> Result<Self, wasmtime::Error> {
         Self::with_engine(Engine::default(), bytecode)
     }
 
-    /// Creates a new `Regex` instance with the given `wasmi` engine.
+    /// Creates a new `Regex` instance with the given `wasmtime` engine.
     ///
     /// # Panics
     ///
     /// This function will panic if the provided `RegexBytecode` is not
     /// well-formed and is missing any of the expected functions or memory.
-    pub fn with_engine(engine: Engine, bytecode: &RegexBytecode) -> Result<Self, wasmi::Error> {
-        let executor = Executor::with_engine(engine, bytecode)?;
+    pub fn with_engine(engine: Engine, bytecode: &RegexBytecode) -> Result<Self, wasmtime::Error> {
+        let mut executor = Executor::with_engine(engine, bytecode)?;
 
         let prepare_input = executor
             .instance
-            .get_typed_func::<i64, i32>(&executor.store, "prepare_input")
+            .get_typed_func::<i64, i32>(&mut executor.store, "prepare_input")
             .expect(
                 "If the `RegexBytecode` passed is well-formed, then there must be a \
                  `prepare_input` function",
@@ -93,14 +89,14 @@ impl Regex {
         let is_match = executor
             .instance
             // [anchored, anchored_pattern, span_start, span_end, haystack_len]
-            .get_typed_func::<IsMatchArgs, i32>(&executor.store, "is_match")
+            .get_typed_func::<IsMatchArgs, i32>(&mut executor.store, "is_match")
             .expect(
                 "If the `RegexBytecode` passed is well-formed, then there must be a `is_match` \
                  function",
             );
         let haystack: Memory = executor
             .instance
-            .get_memory(&executor.store, "haystack")
+            .get_memory(&mut executor.store, "haystack")
             .expect(
                 "If the `RegexBytecode` passed is well-formed, then there must be a `haystack` \
                  memory",

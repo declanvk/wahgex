@@ -63,15 +63,15 @@ impl PerlWordLookupTable {
             for (j, this) in chunk_bits.iter_mut().enumerate().take(Self::CHUNK) {
                 for k in 0..8u32 {
                     let code = (i * Self::CHUNK as u32 + j as u32) * 8 + k;
-                    if code >= 0x80 {
-                        if let Some(ch) = char::from_u32(code) {
-                            let is_word = properties
-                                .range(..=ch)
-                                .next_back()
-                                .map(|(_, range)| range.contains(&ch))
-                                .unwrap_or(false);
-                            *this |= (is_word as u8) << k;
-                        }
+                    if code >= 0x80
+                        && let Some(ch) = char::from_u32(code)
+                    {
+                        let is_word = properties
+                            .range(..=ch)
+                            .next_back()
+                            .map(|(_, range)| range.contains(&ch))
+                            .unwrap_or(false);
+                        *this |= (is_word as u8) << k;
                     }
                 }
             }
