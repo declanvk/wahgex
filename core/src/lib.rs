@@ -9,7 +9,7 @@ use std::borrow::Cow;
 #[cfg(feature = "compile")]
 use compile::compile_from_nfa;
 use regex_automata::nfa::thompson::Compiler;
-use wasmparser::types::Types;
+use wasmparser::{ExternalKind, Parser, Payload};
 
 pub use crate::error::BuildError;
 pub use regex_automata::{
@@ -250,7 +250,6 @@ impl RegexBytecode {
     ///
     /// This is an unsafe operation that should only be used when the byte slice
     /// is known to be a valid WebAssembly module with the expected shape.
-    /// For safe creation, use `from_bytes` instead.
     pub fn from_bytes_unchecked(bytes: impl Into<Vec<u8>>) -> Self {
         Self {
             bytes: bytes.into().into(),
@@ -262,7 +261,6 @@ impl RegexBytecode {
     ///
     /// This is an unsafe operation that should only be used when the byte slice
     /// is known to be a valid WebAssembly module with the expected shape.
-    /// For safe creation, use `from_static_bytes` instead.
     pub const fn from_static_bytes_unchecked(bytes: &'static [u8]) -> Self {
         Self {
             bytes: Cow::Borrowed(bytes),
@@ -272,12 +270,19 @@ impl RegexBytecode {
     /// Creates a `RegexBytecode` instance from a byte slice after validating
     /// that it is a valid WebAssembly module with the expected shape.
     ///
-    /// This is the recommended way to create a `RegexBytecode` instance from a
-    /// dynamic byte slice.
+    /// # Errors
+    ///  - If the provided bytes are not a validate WASM module
+    ///  - If the provided bytes are a WASM module, but don't have the expected
+    ///    exports.
+    ///
+    /// To be clear, the validation on this function won't be able to detect if
+    /// the passed WASM module was internally tampered with, so this should
+    /// never be used with anything other than bytecode that was produced by
+    /// this library.
     pub fn from_bytes(bytes: impl Into<Vec<u8>>) -> Result<Self, BuildError> {
         let bytes = bytes.into();
-        let types = wasmparser::validate(&bytes)?;
-        Self::validate_module_shape(types)?;
+        wasmparser::validate(&bytes)?;
+        Self::validate_module_exports(&bytes)?;
 
         Ok(Self::from_bytes_unchecked(bytes))
     }
@@ -286,11 +291,19 @@ impl RegexBytecode {
     /// validating that it is a valid WebAssembly module with the expected
     /// shape.
     ///
-    /// This is the recommended way to create a `RegexBytecode` instance from a
-    /// static byte slice.
+    ///
+    /// # Errors
+    ///  - If the provided bytes are not a validate WASM module
+    ///  - If the provided bytes are a WASM module, but don't have the expected
+    ///    exports.
+    ///
+    /// To be clear, the validation on this function won't be able to detect if
+    /// the passed WASM module was internally tampered with, so this should
+    /// never be used with anything other than bytecode that was produced by
+    /// this library.
     pub fn from_static_bytes(bytes: &'static [u8]) -> Result<Self, BuildError> {
-        let types = wasmparser::validate(bytes)?;
-        Self::validate_module_shape(types)?;
+        wasmparser::validate(bytes)?;
+        Self::validate_module_exports(bytes)?;
 
         Ok(Self::from_static_bytes_unchecked(bytes))
     }
@@ -303,9 +316,67 @@ impl RegexBytecode {
         }
     }
 
-    fn validate_module_shape(_types: Types) -> Result<(), BuildError> {
-        // TODO: Implement this so that we validate the expected shape of the
-        // bytes
+    fn validate_module_exports(bytes: &[u8]) -> Result<(), BuildError> {
+        let mut has_prepare_input = false;
+        let mut has_is_match = false;
+        let mut has_haystack = false;
+
+        for payload in Parser::new(0).parse_all(bytes) {
+            if let Payload::ExportSection(reader) = payload? {
+                for export in reader {
+                    let export = export?;
+                    match export.name {
+                        "prepare_input" => {
+                            if let ExternalKind::Func = export.kind {
+                                has_prepare_input = true;
+                            } else {
+                                return Err(BuildError::incorrect_export_type(
+                                    "prepare_input",
+                                    ExternalKind::Func,
+                                    export.kind,
+                                ));
+                            }
+                        },
+                        "is_match" => {
+                            if let ExternalKind::Func = export.kind {
+                                has_is_match = true;
+                            } else {
+                                return Err(BuildError::incorrect_export_type(
+                                    "is_match",
+                                    ExternalKind::Func,
+                                    export.kind,
+                                ));
+                            }
+                        },
+                        "haystack" => {
+                            if let ExternalKind::Memory = export.kind {
+                                has_haystack = true;
+                            } else {
+                                return Err(BuildError::incorrect_export_type(
+                                    "haystack",
+                                    ExternalKind::Memory,
+                                    export.kind,
+                                ));
+                            }
+                        },
+                        _ => {},
+                    }
+                }
+            }
+        }
+
+        if !has_prepare_input {
+            return Err(BuildError::missing_export("prepare_input"));
+        }
+
+        if !has_is_match {
+            return Err(BuildError::missing_export("is_match"));
+        }
+
+        if !has_haystack {
+            return Err(BuildError::missing_export("haystack"));
+        }
+
         Ok(())
     }
 }
@@ -341,4 +412,106 @@ fn common_input_validation(input: &Input<'_>) {
         span.end <= input.haystack().len(),
         "span end must be within bounds of haystack"
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use wasmparser::ExternalKind;
+
+    #[test]
+    fn test_from_bytes_invalid_wasm() {
+        let err = RegexBytecode::from_bytes(vec![]).unwrap_err();
+        assert!(err.to_string().contains("unexpected end-of-file"), "{err}");
+    }
+
+    #[test]
+    fn test_from_bytes_incorrect_export_type() {
+        // Module with 'prepare_input' as a Memory instead of Func.
+        let mut module = wasm_encoder::Module::new();
+
+        let mut mems = wasm_encoder::MemorySection::new();
+        mems.memory(wasm_encoder::MemoryType {
+            minimum: 1,
+            maximum: None,
+            memory64: false,
+            shared: false,
+            page_size_log2: None,
+        });
+        module.section(&mems);
+
+        let mut exports = wasm_encoder::ExportSection::new();
+        exports.export("prepare_input", wasm_encoder::ExportKind::Memory, 0);
+        module.section(&exports);
+        let wasm = module.finish();
+
+        let err = RegexBytecode::from_bytes(wasm).unwrap_err();
+        assert_eq!(
+            err.to_string(),
+            format!(
+                "incorrect export type for `prepare_input`: expected {:?}, found {:?}",
+                ExternalKind::Func,
+                ExternalKind::Memory
+            )
+        );
+    }
+
+    #[test]
+    fn test_from_bytes_missing_is_match() {
+        let mut module = wasm_encoder::Module::new();
+
+        let mut types = wasm_encoder::TypeSection::new();
+        types.ty().function([], []);
+        module.section(&types);
+
+        let mut funcs = wasm_encoder::FunctionSection::new();
+        funcs.function(0);
+        module.section(&funcs);
+
+        let mut exports = wasm_encoder::ExportSection::new();
+        exports.export("prepare_input", wasm_encoder::ExportKind::Func, 0);
+        module.section(&exports);
+
+        let mut code = wasm_encoder::CodeSection::new();
+        let mut func = wasm_encoder::Function::new([]);
+        func.instruction(&wasm_encoder::Instruction::End);
+        code.function(&func);
+        module.section(&code);
+
+        let wasm = module.finish();
+
+        let err = RegexBytecode::from_bytes(wasm).unwrap_err();
+        assert_eq!(err.to_string(), "missing required export `is_match`");
+    }
+
+    #[test]
+    fn test_from_bytes_missing_haystack() {
+        let mut module = wasm_encoder::Module::new();
+
+        let mut types = wasm_encoder::TypeSection::new();
+        types.ty().function([], []);
+        module.section(&types);
+
+        let mut funcs = wasm_encoder::FunctionSection::new();
+        funcs.function(0);
+        funcs.function(0);
+        module.section(&funcs);
+
+        let mut exports = wasm_encoder::ExportSection::new();
+        exports.export("prepare_input", wasm_encoder::ExportKind::Func, 0);
+        exports.export("is_match", wasm_encoder::ExportKind::Func, 1);
+        module.section(&exports);
+
+        let mut code = wasm_encoder::CodeSection::new();
+        let mut func = wasm_encoder::Function::new([]);
+        func.instruction(&wasm_encoder::Instruction::End);
+        code.function(&func);
+        code.function(&func);
+        module.section(&code);
+
+        let wasm = module.finish();
+
+        let err = RegexBytecode::from_bytes(wasm).unwrap_err();
+        assert_eq!(err.to_string(), "missing required export `haystack`");
+    }
 }
