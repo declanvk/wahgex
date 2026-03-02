@@ -1,0 +1,23 @@
+[package]
+name = "wahgex-smoke-tests"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+wahgex = { path = "../core", version = "0.1" }
+
+[features]
+wasmtime = ["wahgex/wasmtime"]
+wasmi = ["wahgex/wasmi"]
+
+
+[[test]]
+path = "tests/wasmi.rs"
+name = "wasmi"
+required-features = ["wasmi"]
+
+[[test]]
+path = "tests/wasmtime.rs"
+name = "wasmtime"
+required-features = ["wasmtime"]

@@ -25,6 +25,10 @@ cargo build --manifest-path core/Cargo.toml --no-default-features --features was
 cargo build --manifest-path core/Cargo.toml --no-default-features --features compile,wasmi,wasmtime
 cargo build --manifest-path cli/Cargo.toml
 cargo build --manifest-path web/playground/Cargo.toml
+cargo build --manifest-path smoke-tests/Cargo.toml --no-default-features
+cargo build --manifest-path smoke-tests/Cargo.toml --no-default-features --features wasmi,wasmtime
+cargo build --manifest-path smoke-tests/Cargo.toml --no-default-features --features wasmi
+cargo build --manifest-path smoke-tests/Cargo.toml --no-default-features --features wasmtime
 
 # --all-targets does not include the doctests
 # `cargo hack test --feature-powerset --print-command-list`
@@ -42,6 +46,10 @@ cargo test --manifest-path core/Cargo.toml --no-default-features --features wasm
 cargo test --manifest-path core/Cargo.toml --no-default-features --features compile,wasmi,wasmtime
 cargo test --manifest-path cli/Cargo.toml
 cargo test --manifest-path web/playground/Cargo.toml
+cargo test --manifest-path smoke-tests/Cargo.toml --no-default-features
+cargo test --manifest-path smoke-tests/Cargo.toml --no-default-features --features wasmi,wasmtime
+cargo test --manifest-path smoke-tests/Cargo.toml --no-default-features --features wasmi
+cargo test --manifest-path smoke-tests/Cargo.toml --no-default-features --features wasmtime
 
 cargo "${TOOLCHAIN_ARG}" test --doc
 cargo "${TOOLCHAIN_ARG}" test --benches --release
@@ -61,6 +69,10 @@ cargo clippy --manifest-path core/Cargo.toml --no-default-features --features wa
 cargo clippy --manifest-path core/Cargo.toml --no-default-features --features compile,wasmi,wasmtime
 cargo clippy --manifest-path cli/Cargo.toml
 cargo clippy --manifest-path web/playground/Cargo.toml
+cargo clippy --manifest-path smoke-tests/Cargo.toml --no-default-features
+cargo clippy --manifest-path smoke-tests/Cargo.toml --no-default-features --features wasmi,wasmtime
+cargo clippy --manifest-path smoke-tests/Cargo.toml --no-default-features --features wasmi
+cargo clippy --manifest-path smoke-tests/Cargo.toml --no-default-features --features wasmtime
 
 cargo "${TOOLCHAIN_ARG}" doc    --no-deps --document-private-items
 

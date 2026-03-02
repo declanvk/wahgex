@@ -26,7 +26,6 @@ rayon = "1.10.0"
 regex-test = { workspace = true }
 wahgex = { path = ".", features = [
     "wasmi",
-    "wasmtime",
     "compile",
 ], default-features = false }
 wasmprinter = { workspace = true }

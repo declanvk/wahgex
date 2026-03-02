@@ -20,7 +20,8 @@ pub use regex_automata::{
 
 #[cfg(feature = "compile")]
 mod compile;
-#[cfg(feature = "wasmi")]
+// #[cfg(any(feature = "wasmi", feature = "wasmtime"))]
+#[cfg(any(feature = "wasmi", feature = "wasmtime"))]
 pub mod engines;
 mod error;
 mod input;
@@ -397,7 +398,7 @@ impl AsRef<[u8]> for RegexBytecode {
 ///     [`input.end`][Input::end].
 ///  3. The [`input.end()`][Input::end] must be less than or equal to the length
 ///     of the haystack.
-#[cfg(feature = "wasmi")]
+#[cfg(any(feature = "wasmi", feature = "wasmtime"))]
 fn common_input_validation(input: &Input<'_>) {
     assert!(
         input.haystack().len() < usize::MAX,

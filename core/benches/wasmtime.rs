@@ -14,7 +14,7 @@ fn cache_read_haystack(name: &'static str) -> &'static str {
     match name {
         "sherlock" => {
             static SHERLOCK: LazyLock<String> =
-                LazyLock::new(|| read_haystack_from_path("benches/haystacks/sherlock.txt"));
+                LazyLock::new(|| read_haystack_from_path("../testdata/haystacks/sherlock.txt"));
             &SHERLOCK
         },
         unknown => panic!("Unknown haystack [{unknown}]"),

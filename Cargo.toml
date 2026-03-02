@@ -1,5 +1,5 @@
 [workspace]
-members = ["core", "cli", "web/playground"]
+members = ["core", "cli", "web/playground", "smoke-tests"]
 resolver = "3"
 
 [workspace.dependencies]
