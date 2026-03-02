@@ -11,38 +11,56 @@ TOOLCHAIN_ARG="+${TOOLCHAIN}"
 
 # Build
 # `cargo hack build --feature-powerset --print-command-list`
-cargo "${TOOLCHAIN_ARG}" build --manifest-path core/Cargo.toml --no-default-features
-cargo "${TOOLCHAIN_ARG}" build --manifest-path core/Cargo.toml --no-default-features --features default,wasmi
-cargo "${TOOLCHAIN_ARG}" build --manifest-path core/Cargo.toml --no-default-features --features compile
-cargo "${TOOLCHAIN_ARG}" build --manifest-path core/Cargo.toml --no-default-features --features default
-cargo "${TOOLCHAIN_ARG}" build --manifest-path core/Cargo.toml --no-default-features --features wasmi
-cargo "${TOOLCHAIN_ARG}" build --manifest-path core/Cargo.toml --no-default-features --features compile,wasmi
-cargo "${TOOLCHAIN_ARG}" build --manifest-path cli/Cargo.toml
-cargo "${TOOLCHAIN_ARG}" build --manifest-path web/playground/Cargo.toml
+cargo build --manifest-path core/Cargo.toml --no-default-features
+cargo build --manifest-path core/Cargo.toml --no-default-features --features default,wasmi,wasmtime
+cargo build --manifest-path core/Cargo.toml --no-default-features --features compile
+cargo build --manifest-path core/Cargo.toml --no-default-features --features default
+cargo build --manifest-path core/Cargo.toml --no-default-features --features wasmi
+cargo build --manifest-path core/Cargo.toml --no-default-features --features compile,wasmi
+cargo build --manifest-path core/Cargo.toml --no-default-features --features default,wasmi
+cargo build --manifest-path core/Cargo.toml --no-default-features --features wasmtime
+cargo build --manifest-path core/Cargo.toml --no-default-features --features compile,wasmtime
+cargo build --manifest-path core/Cargo.toml --no-default-features --features default,wasmtime
+cargo build --manifest-path core/Cargo.toml --no-default-features --features wasmi,wasmtime
+cargo build --manifest-path core/Cargo.toml --no-default-features --features compile,wasmi,wasmtime
+cargo build --manifest-path cli/Cargo.toml
+cargo build --manifest-path web/playground/Cargo.toml
 
 # --all-targets does not include the doctests
 # `cargo hack test --feature-powerset --print-command-list`
-cargo "${TOOLCHAIN_ARG}" test --manifest-path core/Cargo.toml --no-default-features
-cargo "${TOOLCHAIN_ARG}" test --manifest-path core/Cargo.toml --no-default-features --features default,wasmi
-cargo "${TOOLCHAIN_ARG}" test --manifest-path core/Cargo.toml --no-default-features --features compile
-cargo "${TOOLCHAIN_ARG}" test --manifest-path core/Cargo.toml --no-default-features --features default
-cargo "${TOOLCHAIN_ARG}" test --manifest-path core/Cargo.toml --no-default-features --features wasmi
-cargo "${TOOLCHAIN_ARG}" test --manifest-path core/Cargo.toml --no-default-features --features compile,wasmi
-cargo "${TOOLCHAIN_ARG}" test --manifest-path cli/Cargo.toml
-cargo "${TOOLCHAIN_ARG}" test --manifest-path web/playground/Cargo.toml
+cargo test --manifest-path core/Cargo.toml --no-default-features
+cargo test --manifest-path core/Cargo.toml --no-default-features --features default,wasmi,wasmtime
+cargo test --manifest-path core/Cargo.toml --no-default-features --features compile
+cargo test --manifest-path core/Cargo.toml --no-default-features --features default
+cargo test --manifest-path core/Cargo.toml --no-default-features --features wasmi
+cargo test --manifest-path core/Cargo.toml --no-default-features --features compile,wasmi
+cargo test --manifest-path core/Cargo.toml --no-default-features --features default,wasmi
+cargo test --manifest-path core/Cargo.toml --no-default-features --features wasmtime
+cargo test --manifest-path core/Cargo.toml --no-default-features --features compile,wasmtime
+cargo test --manifest-path core/Cargo.toml --no-default-features --features default,wasmtime
+cargo test --manifest-path core/Cargo.toml --no-default-features --features wasmi,wasmtime
+cargo test --manifest-path core/Cargo.toml --no-default-features --features compile,wasmi,wasmtime
+cargo test --manifest-path cli/Cargo.toml
+cargo test --manifest-path web/playground/Cargo.toml
 
 cargo "${TOOLCHAIN_ARG}" test --doc
 cargo "${TOOLCHAIN_ARG}" test --benches --release
 
 # `cargo hack clippy --feature-powerset --print-command-list`
-cargo "${TOOLCHAIN_ARG}" clippy --manifest-path core/Cargo.toml --no-default-features
-cargo "${TOOLCHAIN_ARG}" clippy --manifest-path core/Cargo.toml --no-default-features --features default,wasmi
-cargo "${TOOLCHAIN_ARG}" clippy --manifest-path core/Cargo.toml --no-default-features --features compile
-cargo "${TOOLCHAIN_ARG}" clippy --manifest-path core/Cargo.toml --no-default-features --features default
-cargo "${TOOLCHAIN_ARG}" clippy --manifest-path core/Cargo.toml --no-default-features --features wasmi
-cargo "${TOOLCHAIN_ARG}" clippy --manifest-path core/Cargo.toml --no-default-features --features compile,wasmi
-cargo "${TOOLCHAIN_ARG}" clippy --manifest-path cli/Cargo.toml
-cargo "${TOOLCHAIN_ARG}" clippy --manifest-path web/playground/Cargo.toml
+cargo clippy --manifest-path core/Cargo.toml --no-default-features
+cargo clippy --manifest-path core/Cargo.toml --no-default-features --features default,wasmi,wasmtime
+cargo clippy --manifest-path core/Cargo.toml --no-default-features --features compile
+cargo clippy --manifest-path core/Cargo.toml --no-default-features --features default
+cargo clippy --manifest-path core/Cargo.toml --no-default-features --features wasmi
+cargo clippy --manifest-path core/Cargo.toml --no-default-features --features compile,wasmi
+cargo clippy --manifest-path core/Cargo.toml --no-default-features --features default,wasmi
+cargo clippy --manifest-path core/Cargo.toml --no-default-features --features wasmtime
+cargo clippy --manifest-path core/Cargo.toml --no-default-features --features compile,wasmtime
+cargo clippy --manifest-path core/Cargo.toml --no-default-features --features default,wasmtime
+cargo clippy --manifest-path core/Cargo.toml --no-default-features --features wasmi,wasmtime
+cargo clippy --manifest-path core/Cargo.toml --no-default-features --features compile,wasmi,wasmtime
+cargo clippy --manifest-path cli/Cargo.toml
+cargo clippy --manifest-path web/playground/Cargo.toml
 
 cargo "${TOOLCHAIN_ARG}" doc    --no-deps --document-private-items
 

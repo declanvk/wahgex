@@ -1,12 +1,12 @@
-#[cfg(feature = "wasmi")]
+#[cfg(any(feature = "wasmi", feature = "wasmtime"))]
 use regex_automata::Anchored;
 
 /// This type is a mirror of [`regex_automata::Input`], with guaranteed
 /// alignment and no-substructs.
 #[derive(Debug)]
 #[repr(C)]
-#[cfg(feature = "wasmi")]
-pub struct InputOpts {
+#[cfg(any(feature = "wasmi", feature = "wasmtime"))]
+pub(crate) struct InputOpts {
     /// Whether to execute an "earliest" search or not.
     pub earliest: i32,
     /// Sets the anchor mode of a search.
@@ -24,7 +24,7 @@ pub struct InputOpts {
     pub anchored_pattern: i32,
 }
 
-#[cfg(feature = "wasmi")]
+#[cfg(any(feature = "wasmi", feature = "wasmtime"))]
 impl InputOpts {
     /// Creates a new `InputOpts` from a [`regex_automata::Input`].
     ///

@@ -5,6 +5,7 @@ resolver = "3"
 [workspace.dependencies]
 regex-test = "0.1.1"
 wasmi = "0.44.0"
+wasmtime = "42.0.1"
 wasmparser = { version = "0.228.0", default-features = false, features = [
     "validate",
 ] }

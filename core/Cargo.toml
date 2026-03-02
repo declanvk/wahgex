@@ -7,7 +7,7 @@ readme = "README.md"
 keywords = []
 categories = []
 edition = "2024"
-rust-version = "1.87"
+rust-version = "1.91"
 
 [dependencies]
 highway = "1.3.0"
@@ -16,6 +16,7 @@ wasm-encoder = { version = "0.228.0", default-features = false, features = [
     "std",
 ], optional = true }
 wasmi = { workspace = true, optional = true }
+wasmtime = { workspace = true, optional = true }
 wasmparser = { workspace = true }
 
 [dev-dependencies]
@@ -25,6 +26,7 @@ rayon = "1.10.0"
 regex-test = { workspace = true }
 wahgex = { path = ".", features = [
     "wasmi",
+    "wasmtime",
     "compile",
 ], default-features = false }
 wasmprinter = { workspace = true }
@@ -33,6 +35,7 @@ wasmprinter = { workspace = true }
 default = ["compile"]
 compile = ["dep:wasm-encoder"]
 wasmi = ["dep:wasmi"]
+wasmtime = ["dep:wasmtime"]
 
 [[test]]
 path = "tests/integration.rs"
@@ -53,3 +56,8 @@ required-features = ["compile"]
 name = "wasmi"
 harness = false
 required-features = ["wasmi", "compile"]
+
+[[bench]]
+name = "wasmtime"
+harness = false
+required-features = ["wasmtime", "compile"]
